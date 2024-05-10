@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCP Game</title>
+    <!-- Include Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-200">
+    <div class="container mx-auto mt-8">
+        <h1 class="text-3xl font-semibold text-center mb-4">Rock Paper Scissors Game</h1>
+        <div id="join-container" class="flex flex-col justify-center items-center mb-4">
+            <input id="player-name" type="text" placeholder="Enter your name"
+                class="border border-gray-400 rounded-md px-2 py-1 mb-2">
+            <button id="join-button"
+                class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded">Continue</button>
+        </div>
+        <div id="join-game-container" class="flex flex-col justify-center items-center mb-4 hidden gap-2">
+            <input id="game-id" type="text" placeholder="Enter game id"
+                class="border border-gray-400 rounded-md px-2 py-1 mb-2">
+            <button id="join-game"
+                class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded">Join Game</button>
+
+            <button id="join-game-random"
+                class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded">Join Game Random
+                Game</button>
+        </div>
+        <div id="game-container" class="flex flex-col justify-center items-center hidden">
+            <div id="game-status" class="text-xl font-semibold mb-4"></div>
+            <div id="score" class="flex mb-4">
+                <!-- Player score circles -->
+                <div class="player-score w-16 h-16 rounded-full bg-gray-400 mr-2"></div>
+                <div class="player-score w-16 h-16 rounded-full bg-gray-400 mr-2"></div>
+                <div class="player-score w-16 h-16 rounded-full bg-gray-400 mr-2"></div>
+
+                <!-- Server score circles -->
+                <div class="server-score w-16 h-16 rounded-full bg-gray-400 ml-2"></div>
+                <div class="server-score w-16 h-16 rounded-full bg-gray-400 ml-2"></div>
+                <div class="server-score w-16 h-16 rounded-full bg-gray-400 ml-2"></div>
+            </div>
+            <div id="player-moves" class="flex space-x-4">
+                <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
+                    onclick="selectMove('rock')">Rock</button>
+                <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded"
+                    onclick="selectMove('paper')">Paper</button>
+                <button class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded"
+                    onclick="selectMove('scissors')">Scissors</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = null;
+        let playerName = null;
+
+        const playerNameInput = document.getElementById("player-name");
+        const continueButton = document.getElementById("join-button");
+        const joinRandom = document.getElementById("join-game-random");
+        const joinGameButton = document.getElementById("join-game");
+
+        continueButton.addEventListener("click", function () {
+            const playerName = playerNameInput.value;
+            document.getElementById("join-container").classList.add("hidden");
+            document.getElementById("join-game-container").classList.remove("hidden");
+        });
+
+
+
+        function joinGame(gameId) {
+            socket = new WebSocket(`ws://localhost:8080/ws/${gameId}`);
+
+            socket.onopen = function (event) {
+                console.log("WebSocket connection established.");
+
+                socket.send(JSON.stringify({ type: "join", name: playerName }));
+
+            }
+
+            socket.onmessage = function (event) {
+                var data = JSON.parse(event.data);
+                if (data.type === "game_update") {
+                    handleGameUpdate(data);
+                } else if (data.type === "join_ack") {
+                    if (data.success) {
+                        // Player successfully joined the game
+                        document.getElementById("join-container").classList.add("hidden");
+                        document.getElementById("join-game-container").classList.add("hidden");
+                        document.getElementById("game-container").style.display = "block";
+                    } else {
+                        // Player failed to join the game
+                        alert("Failed to join the game. Please try again later.");
+                    }
+                }
+            };
+
+        }
+
+
+        joinRandom.addEventListener("click", async function () {
+            playerName = playerNameInput.value;
+
+            const response = await fetch(`/create`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const gameId = await response.text();
+
+            joinGame(gameId);
+        });
+
+        joinGameButton.addEventListener("click", function () {
+            playerName = playerNameInput.value;
+
+            const gameId = document.getElementById("game-id").value;
+            joinGame(gameId);
+        });
+
+
+
+
+
+
+        function selectMove(move) {
+            socket.send(JSON.stringify({ type: "move", move: move }));
+        }
+
+        function handleGameUpdate(data) {
+            var gameStatusElement = document.getElementById("game-status");
+            gameStatusElement.textContent = data.gameStatus.message;
+
+            const player = data.players.find(player => player.name === playerName);
+            const opponent = data.players.find(player => player.name !== playerName);
+
+            // Update player score circles
+            var playerScoreCircles = document.querySelectorAll("#score .player-score");
+            for (var i = 0; i < playerScoreCircles.length; i++) {
+                if (i < player.score) {
+                    playerScoreCircles[i].classList.remove("bg-gray-400");
+                    playerScoreCircles[i].classList.add("bg-blue-500");
+                } else {
+                    playerScoreCircles[i].classList.remove("bg-blue-500");
+                    playerScoreCircles[i].classList.add("bg-gray-400");
+                }
+            }
+
+            // Update server score circles
+            var serverScoreCircles = document.querySelectorAll("#score .server-score");
+            for (var i = 0; i < serverScoreCircles.length; i++) {
+                if (i < opponent.score) {
+                    serverScoreCircles[i].classList.remove("bg-gray-400");
+                    serverScoreCircles[i].classList.add("bg-red-500");
+                } else {
+                    serverScoreCircles[i].classList.remove("bg-red-500");
+                    serverScoreCircles[i].classList.add("bg-gray-400");
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

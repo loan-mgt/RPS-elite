@@ -1,0 +1,275 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/rand"
+	"net/http"
+	"sync"
+	"time"
+
+	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
+)
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+type Game struct {
+	ID          string     `json:"id"`
+	Players     [2]Player  `json:"players"`
+	GameStatus  GameStatus `json:"gameStatus"`
+	LastUpdated time.Time  `json:"lastUpdated"`
+	Type        string     `json:"type"`
+}
+
+type Player struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Flag  string `json:"flag"`
+	Score int    `json:"score"`
+}
+
+func (p Player) String() string {
+	return fmt.Sprintf("Player{ID: %s, Name: %s, Flag: %s, Score: %d}", p.ID, p.Name, p.Flag, p.Score)
+}
+
+type GameStatus struct {
+	PlayerScore   int    `json:"playerScore"`
+	OpponentScore int    `json:"opponentScore"`
+	GameMode      string `json:"gameMode"`
+	Time          int    `json:"time"`
+	Message       string `json:"message"`
+	Status        string `json:"status"`
+}
+
+var games map[string]*Game
+var gamesMutex sync.Mutex
+
+func init() {
+	games = make(map[string]*Game)
+}
+
+func wsHandler(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Read game ID from request URL
+	vars := mux.Vars(r)
+	gameID := vars["id"]
+
+	// Get or create game
+	game, err := getOrCreateGame(gameID)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	// Add player to the game
+	var moveData struct {
+		Type string `json:"type"`
+		Name string `json:"name"`
+	}
+
+	err = conn.ReadJSON(&moveData)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	playerID := fmt.Sprintf("%d", time.Now().UnixNano())
+	player := Player{
+		ID:    playerID,
+		Name:  moveData.Name,
+		Flag:  "default",
+		Score: 0,
+	}
+
+	opponent := Player{}
+	if game.Players[0].ID == "" {
+		game.Players[0] = player
+		opponent = game.Players[1]
+	} else if game.Players[1].ID == "" {
+		game.Players[1] = player
+		opponent = game.Players[0]
+	} else {
+		log.Println("Game is full")
+		return
+	}
+
+	// Send message back to the client indicating successful join
+	sendMessage(conn, Message{Type: "join_ack", Success: true})
+
+	// Send game details to player
+	err = sendGameDetails(conn, game)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	for {
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Printf("Received message: %s type: %s\n", message, string(messageType))
+
+		// Parse JSON message to get player's move
+		var moveData struct {
+			Type string `json:"type"`
+			Move string `json:"move"`
+		}
+		if err := json.Unmarshal(message, &moveData); err != nil {
+			log.Println(err)
+			return
+		}
+
+		// Generate a random move for the server
+		serverMove := getRandomMove()
+
+		// Determine the winner
+		playerMove := moveData.Move
+		winner := determineWinner(playerMove, serverMove)
+
+		if winner == "player" {
+			player.Score++
+		} else if winner == "opponent" {
+			opponent.Score++
+		}
+
+		fmt.Printf("Player: %s, Server: %s\n", player, opponent)
+
+		game.Players = [2]Player{player, opponent}
+
+		fmt.Print("Game players: ", game.Players)
+
+		// Prepare game result
+		game.GameStatus.Message = fmt.Sprintf("You chose %s. Server chose %s. %s", playerMove, serverMove, winner)
+		game.Type = "game_update"
+
+		// Send game details to player type game_update
+		err = sendGameDetails(conn, game)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+}
+
+// Function to generate a random move for the server
+func getRandomMove() string {
+	moves := []string{"rock", "paper", "scissors"}
+	randIndex := rand.Intn(len(moves))
+	return moves[randIndex]
+}
+
+// Function to determine the winner and update the score
+func determineWinner(playerMove, serverMove string) string {
+	if playerMove == serverMove {
+		return "tie"
+	} else if (playerMove == "rock" && serverMove == "scissors") ||
+		(playerMove == "paper" && serverMove == "rock") ||
+		(playerMove == "scissors" && serverMove == "paper") {
+		return "player"
+	} else {
+		return "opponent"
+	}
+}
+
+func getOrCreateGame(gameID string) (*Game, error) {
+	gamesMutex.Lock()
+	defer gamesMutex.Unlock()
+
+	if game, ok := games[gameID]; ok {
+		return game, nil
+	}
+
+	// Create a new game
+	game := &Game{
+		ID: gameID,
+		Players: [2]Player{
+			{ID: "", Name: "", Flag: "", Score: 0},
+			{ID: "", Name: "", Flag: "", Score: 0},
+		},
+		GameStatus: GameStatus{
+			PlayerScore:   0,
+			OpponentScore: 0,
+			GameMode:      "default",
+			Time:          0,
+			Message:       "",
+			Status:        "waiting",
+		},
+		LastUpdated: time.Now(),
+	}
+	games[gameID] = game
+
+	return game, nil
+}
+
+func sendGameDetails(conn *websocket.Conn, game *Game) error {
+	gameJSON, err := json.Marshal(game)
+	if err != nil {
+		return err
+	}
+
+	err = conn.WriteMessage(websocket.TextMessage, gameJSON)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func sendMessage(conn *websocket.Conn, message Message) error {
+	messageJSON, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	err = conn.WriteMessage(websocket.TextMessage, messageJSON)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type Message struct {
+	Type    string `json:"type"`
+	Success bool   `json:"success,omitempty"`
+}
+
+func createGameHandler(w http.ResponseWriter, r *http.Request) {
+
+	gameID := fmt.Sprintf("%d", time.Now().UnixNano())
+
+	_, err := getOrCreateGame(gameID)
+
+	if err != nil {
+		w.Write([]byte("Failed to create game"))
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.Write([]byte(gameID))
+	}
+}
+
+func main() {
+	r := mux.NewRouter()
+	r.HandleFunc("/ws/{id}", wsHandler)
+	r.HandleFunc("/create", createGameHandler).Methods("POST")
+
+	fs := http.FileServer(http.Dir("./static/"))
+	r.PathPrefix("").Handler(http.StripPrefix("", fs))
+
+	http.Handle("/", r)
+	log.Println("Server started at :8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
+}
