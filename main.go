@@ -27,10 +27,11 @@ type Game struct {
 }
 
 type Player struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Flag  string `json:"flag"`
-	Score int    `json:"score"`
+	ID    string          `json:"id"`
+	Name  string          `json:"name"`
+	Flag  string          `json:"flag"`
+	Score int             `json:"score"`
+	Conn  *websocket.Conn `json:"conn"`
 }
 
 func (p Player) String() string {
@@ -90,6 +91,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		Name:  moveData.Name,
 		Flag:  "default",
 		Score: 0,
+		Conn:  conn,
 	}
 
 	opponent := Player{}
@@ -120,7 +122,21 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			return
 		}
-		log.Printf("Received message: %s type: %s\n", message, string(messageType))
+		log.Printf("Received message: %s type: %s\n", message, string(rune(messageType)))
+
+		game, err := getOrCreateGame(gameID)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if game.Players[0].ID == playerID {
+			player = game.Players[0]
+			opponent = game.Players[1]
+		} else {
+			player = game.Players[1]
+			opponent = game.Players[0]
+		}
 
 		// Parse JSON message to get player's move
 		var moveData struct {
@@ -147,7 +163,9 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Printf("Player: %s, Server: %s\n", player, opponent)
 
+		gamesMutex.Lock()
 		game.Players = [2]Player{player, opponent}
+		gamesMutex.Unlock()
 
 		fmt.Print("Game players: ", game.Players)
 
@@ -155,11 +173,15 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		game.GameStatus.Message = fmt.Sprintf("You chose %s. Server chose %s. %s", playerMove, serverMove, winner)
 		game.Type = "game_update"
 
+		saveGame(game)
+
 		// Send game details to player type game_update
-		err = sendGameDetails(conn, game)
-		if err != nil {
-			log.Println(err)
-			return
+		for _, player := range game.Players {
+			err = sendGameDetails(player.Conn, game)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 		}
 	}
 }
@@ -212,6 +234,19 @@ func getOrCreateGame(gameID string) (*Game, error) {
 	games[gameID] = game
 
 	return game, nil
+}
+
+func saveGame(game *Game) error {
+	gamesMutex.Lock()
+	defer gamesMutex.Unlock()
+
+	// Update the last updated time
+	game.LastUpdated = time.Now()
+
+	// Save the game to the games map
+	games[game.ID] = game
+
+	return nil
 }
 
 func sendGameDetails(conn *websocket.Conn, game *Game) error {
