@@ -162,36 +162,44 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			game.GameStatus.Message = "Please make your move"
 		} else if opponent.Move == "" {
 
-			game.GameStatus.Message = "Waiting for opponent"
+			game.GameStatus.Message = fmt.Sprintf("Waiting for %s\n", opponent.Name)
 
 		} else {
 
-			// Generate a random move for the server
-			opponentMove := opponent.Move
+			winner, tie := determineWinner(player, opponent)
 
-			// Determine the winner
-			playerMove := player.Move
-			winner := determineWinner(playerMove, opponentMove)
+			responseMsg := ""
 
-			if winner == "player" {
-				player.Score++
-			} else if winner == "opponent" {
-				opponent.Score++
+			if tie {
+				responseMsg = "it's a tie"
+			} else {
+				if winner.ID == player.ID {
+					player.Score++
+				} else {
+					opponent.Score++
+				}
+				responseMsg = fmt.Sprintf("%s won the round", winner.Name)
 			}
 
+			// Prepare game result
+			game.GameStatus.Message = fmt.Sprintf("Player: %s -> %s, Opponent: %s -> %s, %s",
+				player.Name,
+				player.Move,
+				opponent.Name,
+				opponent.Move,
+				responseMsg)
+
+			// reseting for next round
 			game.GameStatus.Round++
 			player.Move = ""
 			opponent.Move = ""
 
 			fmt.Printf("Player: %s, Opponent: %s\n", player, opponent)
 
-			// Prepare game result
-			game.GameStatus.Message = fmt.Sprintf("Player: %s, Opponent: %s winner is: %s", player.Name, opponent.Name, winner)
-			game.Type = "game_update"
-
 		}
 
 		game.Players = [2]Player{player, opponent}
+		game.Type = "game_update"
 
 		fmt.Print("Game players: ", game.Players)
 
@@ -226,15 +234,18 @@ func getRandomMove() string {
 }
 
 // Function to determine the winner and update the score
-func determineWinner(playerMove, serverMove string) string {
+func determineWinner(player, opponent Player) (winner Player, tie bool) {
+	playerMove := player.Move
+	serverMove := opponent.Move
+
 	if playerMove == serverMove {
-		return "tie"
+		return Player{}, true
 	} else if (playerMove == "rock" && serverMove == "scissors") ||
 		(playerMove == "paper" && serverMove == "rock") ||
 		(playerMove == "scissors" && serverMove == "paper") {
-		return "player"
+		return player, false
 	} else {
-		return "opponent"
+		return opponent, false
 	}
 }
 

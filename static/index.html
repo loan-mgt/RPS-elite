@@ -49,6 +49,11 @@
                 <button class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded"
                     onclick="selectMove('scissors')">Scissors</button>
             </div>
+            <!-- New elements to display player names -->
+            <div id="player-names" class="flex justify-between w-full mt-8 text-sm text-gray-500">
+                <div id="player1-name"></div>
+                <div id="player2-name"></div>
+            </div>
         </div>
     </div>
 
@@ -62,7 +67,7 @@
         const joinGameButton = document.getElementById("join-game");
 
         continueButton.addEventListener("click", function () {
-            const playerName = playerNameInput.value;
+            playerName = playerNameInput.value;
             document.getElementById("join-container").classList.add("hidden");
             document.getElementById("join-game-container").classList.remove("hidden");
         });
@@ -160,6 +165,10 @@
                     serverScoreCircles[i].classList.add("bg-gray-400");
                 }
             }
+
+            // Display player names
+            document.getElementById("player1-name").textContent = data.players[0].name;
+            document.getElementById("player2-name").textContent = data.players[1].name;
         }
     </script>
 </body>
