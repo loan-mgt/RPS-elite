@@ -29,13 +29,14 @@ type Game struct {
 type Player struct {
 	ID    string          `json:"id"`
 	Name  string          `json:"name"`
+	Move  string          `json:"move"`
 	Flag  string          `json:"flag"`
 	Score int             `json:"score"`
 	Conn  *websocket.Conn `json:"conn"`
 }
 
 func (p Player) String() string {
-	return fmt.Sprintf("Player{ID: %s, Name: %s, Flag: %s, Score: %d}", p.ID, p.Name, p.Flag, p.Score)
+	return fmt.Sprintf("Player{ID: %s, Name: %s, Move: %s, Flag: %s, Score: %d}", p.ID, p.Name, p.Move, p.Flag, p.Score)
 }
 
 type GameStatus struct {
@@ -45,6 +46,7 @@ type GameStatus struct {
 	Time          int    `json:"time"`
 	Message       string `json:"message"`
 	Status        string `json:"status"`
+	Round         int    `json:"round"`
 }
 
 var games map[string]*Game
@@ -89,6 +91,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	player := Player{
 		ID:    playerID,
 		Name:  moveData.Name,
+		Move:  "",
 		Flag:  "default",
 		Score: 0,
 		Conn:  conn,
@@ -148,42 +151,71 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Generate a random move for the server
-		serverMove := getRandomMove()
+		player.Move = moveData.Move
 
-		// Determine the winner
-		playerMove := moveData.Move
-		winner := determineWinner(playerMove, serverMove)
+		// print current move
+		fmt.Printf("Player: %s, Move: %s\n", player, moveData.Move)
 
-		if winner == "player" {
-			player.Score++
-		} else if winner == "opponent" {
-			opponent.Score++
+		// check if every one has selected a move
+		if player.Move == "" {
+
+			game.GameStatus.Message = "Please make your move"
+		} else if opponent.Move == "" {
+
+			game.GameStatus.Message = "Waiting for opponent"
+
+		} else {
+
+			// Generate a random move for the server
+			opponentMove := opponent.Move
+
+			// Determine the winner
+			playerMove := player.Move
+			winner := determineWinner(playerMove, opponentMove)
+
+			if winner == "player" {
+				player.Score++
+			} else if winner == "opponent" {
+				opponent.Score++
+			}
+
+			game.GameStatus.Round++
+			player.Move = ""
+			opponent.Move = ""
+
+			fmt.Printf("Player: %s, Opponent: %s\n", player, opponent)
+
+			// Prepare game result
+			game.GameStatus.Message = fmt.Sprintf("Player: %s, Opponent: %s winner is: %s", player.Name, opponent.Name, winner)
+			game.Type = "game_update"
+
 		}
 
-		fmt.Printf("Player: %s, Server: %s\n", player, opponent)
-
-		gamesMutex.Lock()
 		game.Players = [2]Player{player, opponent}
-		gamesMutex.Unlock()
 
 		fmt.Print("Game players: ", game.Players)
-
-		// Prepare game result
-		game.GameStatus.Message = fmt.Sprintf("You chose %s. Server chose %s. %s", playerMove, serverMove, winner)
-		game.Type = "game_update"
 
 		saveGame(game)
 
 		// Send game details to player type game_update
-		for _, player := range game.Players {
-			err = sendGameDetails(player.Conn, game)
-			if err != nil {
-				log.Println(err)
-				return
-			}
+		err = broadcastGameDetails(game)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+	}
+}
+
+// Send game details to all players
+func broadcastGameDetails(game *Game) error {
+	for _, player := range game.Players {
+		err := sendGameDetails(player.Conn, game)
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
 // Function to generate a random move for the server
@@ -218,8 +250,8 @@ func getOrCreateGame(gameID string) (*Game, error) {
 	game := &Game{
 		ID: gameID,
 		Players: [2]Player{
-			{ID: "", Name: "", Flag: "", Score: 0},
-			{ID: "", Name: "", Flag: "", Score: 0},
+			{ID: "", Name: "", Flag: "", Score: 0, Conn: nil, Move: ""},
+			{ID: "", Name: "", Flag: "", Score: 0, Conn: nil, Move: ""},
 		},
 		GameStatus: GameStatus{
 			PlayerScore:   0,
@@ -228,6 +260,7 @@ func getOrCreateGame(gameID string) (*Game, error) {
 			Time:          0,
 			Message:       "",
 			Status:        "waiting",
+			Round:         0,
 		},
 		LastUpdated: time.Now(),
 	}
