@@ -5,12 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RCP Game</title>
+    <link rel="icon" href="/assets/images/logo_transparent.svg">
+    
     <!-- Include Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 
 <body class="bg-gray-200">
-    <div class="container mx-auto mt-8">
+    <div class="container mx-auto mt-2 ">
+        <div class="flex h-20 w-full justify-center items-center">
+<img class="h-full w-auto" src="/assets/images/logo.svg">
+
+        </div>
         <h1 class="text-3xl font-semibold text-center mb-4">Rock Paper Scissors Game</h1>
         <div id="join-container" class="flex flex-col justify-center items-center mb-4">
             <input id="player-name" type="text" placeholder="Enter your name"
@@ -56,7 +62,6 @@
             </div>
         </div>
     </div>
-
     <script>
         var socket = null;
         let playerName = null;
