@@ -1,13 +1,12 @@
 # Start from the official golang image
 FROM golang:1.22-alpine AS builder
 
-ARG GOARCH
 
 # Set necessary environment variables
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=$GOARCH
+    GOARCH=$TARGETPLATFORM
 
 # Move to working directory /build
 WORKDIR /build
