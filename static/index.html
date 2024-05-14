@@ -61,6 +61,8 @@
                 <div id="player2-name"></div>
             </div>
         </div>
+        <div id="toast-container" class="fixed bottom-0 right-0 z-50 p-4 space-y-4"></div>
+
     </div>
     <script>
         var socket = null;
@@ -77,10 +79,57 @@
             document.getElementById("join-game-container").classList.remove("hidden");
         });
 
+        function showToast(type, message) {
+    const toastContainer = document.getElementById('toast-container');
+    
+    // Define colors and icons based on toast type
+    let colorClass, icon;
+    switch (type) {
+        case 'success':
+            colorClass = 'bg-blue-500';
+            icon = '<svg class="flex-shrink-0 size-4 text-blue-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"></path></svg>';
+            break;
+        case 'warning':
+            colorClass = 'bg-yellow-500';
+            icon = '<svg class="flex-shrink-0 size-4 text-yellow-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path></svg>';
+            break;
+        case 'error':
+            colorClass = 'bg-red-500';
+            icon = '<svg class="flex-shrink-0 size-4 text-red-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"></path></svg>';
+            break;
+        case 'info':
+            colorClass = 'bg-gray-500';
+            icon = '<svg class="flex-shrink-0 size-4 text-gray-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path></svg>';
+            break;
+        default:
+            colorClass = 'bg-gray-500';
+            icon = '';
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `max-w-xs bg-white border gap-2 border-gray-200 rounded-xl shadow-lg bg-white  dark:bg-neutral-800 dark:border-neutral-700 p-4 flex items-center`;
+    toast.innerHTML = `
+        <div class="flex-shrink-0">${icon}</div>
+        <div class="ms-3">
+            <p class="text-sm text-gray-700 dark:text-neutral-400">${message}</p>
+        </div>
+    `;
+
+    // Add toast to container
+    toastContainer.appendChild(toast);
+
+    // Remove toast after 5 seconds
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+
+
 
 
         function joinGame(gameId) {
-            socket = new WebSocket(`ws://localhost:8080/ws/${gameId}`);
+            socket = new WebSocket(`wss://${ location.host }/ws/${gameId}`);
 
             socket.onopen = function (event) {
                 console.log("WebSocket connection established.");
@@ -90,6 +139,7 @@
             }
 
             socket.onmessage = function (event) {
+                showToast('success', 'This is a success message.');
                 var data = JSON.parse(event.data);
                 if (data.type === "game_update") {
                     handleGameUpdate(data);
@@ -175,6 +225,8 @@
             document.getElementById("player1-name").textContent = data.players[0].name;
             document.getElementById("player2-name").textContent = data.players[1].name;
         }
+
+        
     </script>
 </body>
 
