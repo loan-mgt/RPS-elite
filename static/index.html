@@ -6,228 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RCP Game</title>
     <link rel="icon" href="/assets/images/logo_transparent.svg">
-    
+
+    <link rel="stylesheet" href="/styles/main.css">
+
     <!-- Include Tailwind CSS -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 
-<body class="bg-gray-200">
-    <div class="container mx-auto mt-2 ">
-        <div class="flex h-20 w-full justify-center items-center">
-<img class="h-full w-auto" src="/assets/images/logo.svg">
+<script src="https://unpkg.com/htmx.org@1.9.11"></script>
 
-        </div>
-        <h1 class="text-3xl font-semibold text-center mb-4">Rock Paper Scissors Game</h1>
-        <div id="join-container" class="flex flex-col justify-center items-center mb-4">
-            <input id="player-name" type="text" placeholder="Enter your name"
-                class="border border-gray-400 rounded-md px-2 py-1 mb-2">
-            <button id="join-button"
-                class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded">Continue</button>
-        </div>
-        <div id="join-game-container" class="flex flex-col justify-center items-center mb-4 hidden gap-2">
-            <input id="game-id" type="text" placeholder="Enter game id"
-                class="border border-gray-400 rounded-md px-2 py-1 mb-2">
-            <button id="join-game"
-                class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded">Join Game</button>
+<body class="bg-primary-light flex h-full w-full items-center flex-col gap-5" hx-ws="connect:/ws2">
 
-            <button id="join-game-random"
-                class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded">Join Game Random
-                Game</button>
-        </div>
-        <div id="game-container" class="flex flex-col justify-center items-center hidden">
-            <div id="game-status" class="text-xl font-semibold mb-4"></div>
-            <div id="score" class="flex mb-4">
-                <!-- Player score circles -->
-                <div class="player-score w-16 h-16 rounded-full bg-gray-400 mr-2"></div>
-                <div class="player-score w-16 h-16 rounded-full bg-gray-400 mr-2"></div>
-                <div class="player-score w-16 h-16 rounded-full bg-gray-400 mr-2"></div>
-
-                <!-- Server score circles -->
-                <div class="server-score w-16 h-16 rounded-full bg-gray-400 ml-2"></div>
-                <div class="server-score w-16 h-16 rounded-full bg-gray-400 ml-2"></div>
-                <div class="server-score w-16 h-16 rounded-full bg-gray-400 ml-2"></div>
-            </div>
-            <div id="player-moves" class="flex space-x-4">
-                <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded"
-                    onclick="selectMove('rock')">Rock</button>
-                <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded"
-                    onclick="selectMove('paper')">Paper</button>
-                <button class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded"
-                    onclick="selectMove('scissors')">Scissors</button>
-            </div>
-            <!-- New elements to display player names -->
-            <div id="player-names" class="flex justify-between w-full mt-8 text-sm text-gray-500">
-                <div id="player1-name"></div>
-                <div id="player2-name"></div>
-            </div>
-        </div>
-        <div id="toast-container" class="fixed bottom-0 right-0 z-50 p-4 space-y-4"></div>
-
+    <div class="h-40 w-auto max-h-1/4">
+        <img class="h-full w-full" src="/assets/images/logo_transparent.svg" alt="logo" />
     </div>
-    <script>
-        var socket = null;
-        let playerName = null;
 
-        const playerNameInput = document.getElementById("player-name");
-        const continueButton = document.getElementById("join-button");
-        const joinRandom = document.getElementById("join-game-random");
-        const joinGameButton = document.getElementById("join-game");
+    <form id="username-form" class="flex flex-col gap-2" hx-ws="send:submit">
+        <label class="font-semibold h-fit" for="username" >Username:</label>
+        <input class="py-1 px-2 rounded-lg border-primary border-2" id="username" name="username" type="text" maxlength="15" placeholder="Your best username"/>
 
-        continueButton.addEventListener("click", function () {
-            playerName = playerNameInput.value;
-            document.getElementById("join-container").classList.add("hidden");
-            document.getElementById("join-game-container").classList.remove("hidden");
-        });
-
-        function showToast(type, message) {
-    const toastContainer = document.getElementById('toast-container');
-    
-    // Define colors and icons based on toast type
-    let colorClass, icon;
-    switch (type) {
-        case 'success':
-            colorClass = 'bg-blue-500';
-            icon = '<svg class="flex-shrink-0 size-4 text-blue-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"></path></svg>';
-            break;
-        case 'warning':
-            colorClass = 'bg-yellow-500';
-            icon = '<svg class="flex-shrink-0 size-4 text-yellow-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path></svg>';
-            break;
-        case 'error':
-            colorClass = 'bg-red-500';
-            icon = '<svg class="flex-shrink-0 size-4 text-red-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"></path></svg>';
-            break;
-        case 'info':
-            colorClass = 'bg-gray-500';
-            icon = '<svg class="flex-shrink-0 size-4 text-gray-500 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8 4a.905.905 0 0 0-.9.995l.35 3.507a.552.552 0 0 0 1.1 0l.35-3.507A.905.905 0 0 0 8 4zm.002 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"></path></svg>';
-            break;
-        default:
-            colorClass = 'bg-gray-500';
-            icon = '';
-    }
-
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `max-w-xs bg-white border gap-2 border-gray-200 rounded-xl shadow-lg bg-white  dark:bg-neutral-800 dark:border-neutral-700 p-4 flex items-center`;
-    toast.innerHTML = `
-        <div class="flex-shrink-0">${icon}</div>
-        <div class="ms-3">
-            <p class="text-sm text-gray-700 dark:text-neutral-400">${message}</p>
-        </div>
-    `;
-
-    // Add toast to container
-    toastContainer.appendChild(toast);
-
-    // Remove toast after 5 seconds
-    setTimeout(() => {
-        toast.remove();
-    }, 5000);
-}
+        <button class="py-1 px-2 bg-primary rounded-lg font-semibold mt-2 hover-bg-secondary transition-all" type="submit">Play</button>
+    </form>
 
 
-
-
-        function joinGame(gameId) {
-            socket = new WebSocket(`wss://${ location.host }/ws/${gameId}`);
-
-            socket.onopen = function (event) {
-                console.log("WebSocket connection established.");
-
-                socket.send(JSON.stringify({ type: "join", name: playerName }));
-
-            }
-
-            socket.onmessage = function (event) {
-                showToast('success', 'This is a success message.');
-                var data = JSON.parse(event.data);
-                if (data.type === "game_update") {
-                    handleGameUpdate(data);
-                } else if (data.type === "join_ack") {
-                    if (data.success) {
-                        // Player successfully joined the game
-                        document.getElementById("join-container").classList.add("hidden");
-                        document.getElementById("join-game-container").classList.add("hidden");
-                        document.getElementById("game-container").style.display = "block";
-                    } else {
-                        // Player failed to join the game
-                        alert("Failed to join the game. Please try again later.");
-                    }
-                }
-            };
-
-        }
-
-
-        joinRandom.addEventListener("click", async function () {
-            playerName = playerNameInput.value;
-
-            const response = await fetch(`/create`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-
-            const gameId = await response.text();
-
-            joinGame(gameId);
-        });
-
-        joinGameButton.addEventListener("click", function () {
-            playerName = playerNameInput.value;
-
-            const gameId = document.getElementById("game-id").value;
-            joinGame(gameId);
-        });
-
-
-
-
-
-
-        function selectMove(move) {
-            socket.send(JSON.stringify({ type: "move", move: move }));
-        }
-
-        function handleGameUpdate(data) {
-            var gameStatusElement = document.getElementById("game-status");
-            gameStatusElement.textContent = data.gameStatus.message;
-
-            const player = data.players.find(player => player.name === playerName);
-            const opponent = data.players.find(player => player.name !== playerName);
-
-            // Update player score circles
-            var playerScoreCircles = document.querySelectorAll("#score .player-score");
-            for (var i = 0; i < playerScoreCircles.length; i++) {
-                if (i < player.score) {
-                    playerScoreCircles[i].classList.remove("bg-gray-400");
-                    playerScoreCircles[i].classList.add("bg-blue-500");
-                } else {
-                    playerScoreCircles[i].classList.remove("bg-blue-500");
-                    playerScoreCircles[i].classList.add("bg-gray-400");
-                }
-            }
-
-            // Update server score circles
-            var serverScoreCircles = document.querySelectorAll("#score .server-score");
-            for (var i = 0; i < serverScoreCircles.length; i++) {
-                if (i < opponent.score) {
-                    serverScoreCircles[i].classList.remove("bg-gray-400");
-                    serverScoreCircles[i].classList.add("bg-red-500");
-                } else {
-                    serverScoreCircles[i].classList.remove("bg-red-500");
-                    serverScoreCircles[i].classList.add("bg-gray-400");
-                }
-            }
-
-            // Display player names
-            document.getElementById("player1-name").textContent = data.players[0].name;
-            document.getElementById("player2-name").textContent = data.players[1].name;
-        }
-
-        
-    </script>
 </body>
 
 </html>

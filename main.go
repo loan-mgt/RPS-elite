@@ -56,6 +56,32 @@ func init() {
 	games = make(map[string]*Game)
 }
 
+func wsHandlerTest(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer conn.Close()
+
+	// Send message back to the client indicating successful join
+	sendMessage(conn, Message{Type: "test", Success: true})
+
+	for {
+		messageType, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		log.Printf("Received message: %s type: %s\n", message, string(rune(messageType)))
+
+		err = conn.WriteMessage(websocket.TextMessage, []byte(`<p hx-swap-oob="outerHTML:#username-form">ok</p>`))
+
+		log.Println(err)
+	}
+
+}
+
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -344,6 +370,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/ws/{id}", wsHandler)
 	r.HandleFunc("/create", createGameHandler).Methods("POST")
+	r.HandleFunc("/ws2", wsHandlerTest)
 
 	fs := http.FileServer(http.Dir("./static/"))
 	r.PathPrefix("").Handler(http.StripPrefix("", fs))
