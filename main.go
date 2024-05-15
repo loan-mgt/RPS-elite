@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -75,7 +77,27 @@ func wsHandlerTest(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Received message: %s type: %s\n", message, string(rune(messageType)))
 
-		err = conn.WriteMessage(websocket.TextMessage, []byte(`<p hx-swap-oob="outerHTML:#username-form">ok</p>`))
+		// Execute the template with any required data
+		tmpl, err := template.ParseFiles("component/gameHome.html")
+		if err != nil {
+			log.Println("Error parsing template:", err)
+			return
+		}
+
+		// Create a buffer to execute the template into
+		var tplBuffer bytes.Buffer
+		err = tmpl.Execute(&tplBuffer, nil)
+		if err != nil {
+			log.Println("Error executing template:", err)
+			return
+		}
+
+		// Write the template content as a text message to the client
+		err = conn.WriteMessage(websocket.TextMessage, tplBuffer.Bytes())
+		if err != nil {
+			log.Println("Error writing template to client:", err)
+			return
+		}
 
 		log.Println(err)
 	}
