@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -56,6 +57,18 @@ type PlayersData struct {
 	Opponent Player
 }
 
+type Request struct {
+	Type string `json:"type"`
+}
+
+type GameSearchRequest struct {
+	Username string `json:"username"`
+}
+
+type MoveRequest struct {
+	Move string `json:"move"`
+}
+
 var games map[string]*Game
 var gamesMutex sync.Mutex
 
@@ -71,65 +84,117 @@ func wsHandlerTest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	// Send message back to the client indicating successful join
-	sendMessage(conn, Message{Type: "test", Success: true})
-
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
 			log.Println(err)
 			return
 		}
+
 		log.Printf("Received message: %s type: %s\n", message, string(rune(messageType)))
 
-		player1 := Player{
-			ID:    "1",
-			Name:  "Player 1",
-			Move:  "rock",
-			Flag:  "BE",
-			Score: 0,
-			Conn:  nil, // Add the appropriate connection
-		}
+		var response []byte
 
-		player2 := Player{
-			ID:    "2",
-			Name:  "Player 2",
-			Move:  "paper",
-			Flag:  "FR",
-			Score: 0,
-			Conn:  nil, // Add the appropriate connection
-		}
-
-		// Create a struct containing both players
-		players := PlayersData{
-			Player:   player1,
-			Opponent: player2,
-		}
-
-		// Parse the template
-		tmpl, err := template.ParseFiles("component/gameHome.html")
+		var msg Message
+		err = json.Unmarshal(message, &msg)
 		if err != nil {
-			log.Println("Error parsing template:", err)
-			return
+			log.Println("Error parsing message:", err)
+			continue
 		}
 
-		// Execute the template with the players data
-		var tplBuffer bytes.Buffer
-		err = tmpl.Execute(&tplBuffer, players)
+		switch msg.Type {
+		case "game-search":
+			response, err = handleGameSearch(message)
+		case "move":
+			response, err = handleMove(message)
+		default:
+			log.Println("Unknown message type:", msg.Type)
+			continue
+		}
+
 		if err != nil {
-			log.Println("Error executing template:", err)
-			return
+			log.Println("Error writing response to client:", err)
+			continue
 		}
 
-		// Write the template content as a text message to the client
-		err = conn.WriteMessage(websocket.TextMessage, tplBuffer.Bytes())
+		err = conn.WriteMessage(websocket.TextMessage, response)
 		if err != nil {
-			log.Println("Error writing template to client:", err)
-			return
+			log.Println("Error writing response to client:", err)
+			continue
 		}
-
-		log.Println(err)
 	}
+}
+
+func handleMove(message []byte) ([]byte, error) {
+	var request MoveRequest
+	err := json.Unmarshal(message, &request)
+	if err != nil {
+		log.Println("Error parsing message:", err)
+		return nil, err
+	}
+
+	if request.Move != "rock" && request.Move != "paper" && request.Move != "scissor" {
+		return nil, errors.New("invalid move")
+	}
+
+	content := fmt.Sprintf(`
+		<div hx-swap-oob="innerHTML:#player-selected-move" >
+			<img class="w-full h-full" src="/assets/images/%s.svg" alt="Rock" />
+		</div>
+	`, request.Move)
+
+	return []byte(content), nil
+}
+
+func handleGameSearch(message []byte) ([]byte, error) {
+
+	var request GameSearchRequest
+	err := json.Unmarshal(message, &request)
+	if err != nil {
+		log.Println("Error parsing message:", err)
+		return nil, err
+	}
+
+	player1 := Player{
+		ID:    "1",
+		Name:  "Player 1",
+		Move:  "rock",
+		Flag:  "BE",
+		Score: 0,
+		Conn:  nil, // Add the appropriate connection
+	}
+
+	player2 := Player{
+		ID:    "2",
+		Name:  request.Username,
+		Move:  "paper",
+		Flag:  "FR",
+		Score: 0,
+		Conn:  nil, // Add the appropriate connection
+	}
+
+	// Create a struct containing both players
+	players := PlayersData{
+		Player:   player1,
+		Opponent: player2,
+	}
+
+	// Parse the template
+	tmpl, err := template.ParseFiles("component/gameHome.gohtml")
+	if err != nil {
+		log.Println("Error parsing template:", err)
+		return nil, err
+	}
+
+	// Execute the template with the players data
+	var tplBuffer bytes.Buffer
+	err = tmpl.Execute(&tplBuffer, players)
+	if err != nil {
+		log.Println("Error executing template:", err)
+		return nil, err
+	}
+
+	return tplBuffer.Bytes(), nil
 
 }
 

@@ -24,7 +24,7 @@
             <img class="h-full w-full" src="/assets/images/logo_transparent.svg" alt="logo" />
         </div>
 
-        <form id="username-form" class="flex flex-col gap-2" hx-ws="send:submit">
+        <form id="username-form" class="flex flex-col gap-2" hx-ws="send:submit" hx-vals='{"type": "game-search"}'>
             <label class="font-semibold h-fit" for="username">Username:</label>
             <input class="py-1 px-2 rounded-lg border-primary border-2" id="username" name="username" type="text"
                 maxlength="15" placeholder="Your best username" />
