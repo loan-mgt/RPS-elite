@@ -51,6 +51,11 @@ type GameStatus struct {
 	Round         int    `json:"round"`
 }
 
+type PlayersData struct {
+	Player   Player
+	Opponent Player
+}
+
 var games map[string]*Game
 var gamesMutex sync.Mutex
 
@@ -77,16 +82,40 @@ func wsHandlerTest(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("Received message: %s type: %s\n", message, string(rune(messageType)))
 
-		// Execute the template with any required data
+		player1 := Player{
+			ID:    "1",
+			Name:  "Player 1",
+			Move:  "rock",
+			Flag:  "BE",
+			Score: 0,
+			Conn:  nil, // Add the appropriate connection
+		}
+
+		player2 := Player{
+			ID:    "2",
+			Name:  "Player 2",
+			Move:  "paper",
+			Flag:  "FR",
+			Score: 0,
+			Conn:  nil, // Add the appropriate connection
+		}
+
+		// Create a struct containing both players
+		players := PlayersData{
+			Player:   player1,
+			Opponent: player2,
+		}
+
+		// Parse the template
 		tmpl, err := template.ParseFiles("component/gameHome.html")
 		if err != nil {
 			log.Println("Error parsing template:", err)
 			return
 		}
 
-		// Create a buffer to execute the template into
+		// Execute the template with the players data
 		var tplBuffer bytes.Buffer
-		err = tmpl.Execute(&tplBuffer, nil)
+		err = tmpl.Execute(&tplBuffer, players)
 		if err != nil {
 			log.Println("Error executing template:", err)
 			return
