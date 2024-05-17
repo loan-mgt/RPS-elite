@@ -1,0 +1,14 @@
+<svg width="1900" height="1900" viewBox="0 0 1900 1900" fill="none" xmlns="http://www.w3.org/2000/svg">
+   <g id="â–¶ anim">
+      <g id="Group 13910" style="mix-blend-mode:luminosity">
+         <rect id="Rectangle 103" x="798.411" y="1078.35" width="503.415" height="675.392" transform="rotate(-55.798 798.411 1078.35)" fill="#C6A0A0"/>
+         <ellipse id="Ellipse 82" cx="987.002" cy="627" rx="342" ry="342" fill="#AF8989"/>
+         <rect id="Rectangle 104" x="261" y="1199.13" width="836.259" height="173.419" rx="86.7097" transform="rotate(-30 261 1199.13)" fill="#CAA4A4"/>
+         <rect id="Rectangle 105" x="543.061" y="1530" width="836.259" height="173.419" rx="86.7097" transform="rotate(-63.4265 543.061 1530)" fill="#F0CACA">
+            <animate attributeName="x" values="543.061;364;543.061;543.061" begin="0s" dur="1.5s" repeatCount="indefinite" fill="freeze" calcMode="linear" keyTimes="0;0.333;0.666;1"/>
+            <animate attributeName="y" values="1530;1366.78;1530;1530" begin="0s" dur="1.5s" repeatCount="indefinite" fill="freeze" calcMode="linear" keyTimes="0;0.333;0.666;1"/>
+            <animateTransform attributeName="transform" type="rotate" values="-63.4265 543.061 1530;-44.9473 364 1366.78;-63.4265 543.061 1530;-63.4265 543.061 1530" begin="0s" dur="1.5s" repeatCount="indefinite" fill="freeze" calcMode="linear" keyTimes="0;0.333;0.666;1"/>
+         </rect>
+      </g>
+   </g>
+</svg>
