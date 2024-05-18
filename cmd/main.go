@@ -14,10 +14,8 @@ func main() {
 
 	routes.SetupRoutes(r)
 
-	fs := http.FileServer(http.Dir("./static/"))
-	r.PathPrefix("").Handler(http.StripPrefix("", fs))
-
 	http.Handle("/", r)
+
 	log.Println("Server started at :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

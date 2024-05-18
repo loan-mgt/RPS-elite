@@ -1,0 +1,24 @@
+{{ define "index" }}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCP Game</title>
+    <link rel="icon" href="/assets/images/logo_transparent.svg">
+
+    <link rel="stylesheet" href="/styles/output.css">
+
+</head>
+
+<script src="https://unpkg.com/htmx.org@1.9.11"></script>
+
+<body class="bg-primary-light flex h-full w-full items-center flex-col gap-5" hx-ws="connect:/ws">
+
+{{ template "home" . }}
+
+</body>
+
+</html>
+{{ end }}
