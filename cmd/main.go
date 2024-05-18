@@ -7,9 +7,12 @@ import (
 	"github.com/gorilla/mux"
 
 	"rcp/elite/internal/routes"
+	"rcp/elite/internal/utils"
 )
 
 func main() {
+	utils.InitializeTemplates("template/*.gohtml")
+
 	r := mux.NewRouter()
 
 	routes.SetupRoutes(r)

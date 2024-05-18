@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
+	"rcp/elite/internal/utils"
 )
 
 type MoveRequest struct {
@@ -23,11 +24,12 @@ func HandleMove(message []byte) ([]byte, error) {
 		return nil, errors.New("invalid move")
 	}
 
-	content := fmt.Sprintf(`
-		<div hx-swap-oob="innerHTML:#player-selected-move" >
-			<img class="w-full h-full" src="/assets/images/%s.svg" alt="Rock" />
-		</div>
-	`, request.Move)
+	var tplBuffer bytes.Buffer
+	err = utils.Templates.ExecuteTemplate(&tplBuffer, "move", request)
+	if err != nil {
+		log.Println("Error executing template:", err)
+		return nil, err
+	}
 
-	return []byte(content), nil
+	return tplBuffer.Bytes(), nil
 }

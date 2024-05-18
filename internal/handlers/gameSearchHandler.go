@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"log"
 
 	"github.com/gorilla/websocket"
+
+	"rcp/elite/internal/utils"
 )
 
 type Player struct {
@@ -66,15 +67,8 @@ func HandleGameSearch(message []byte) ([]byte, error) {
 	}
 
 	// Parse the template
-	tmpl, err := template.ParseFiles("internal/component/gameHome.gohtml")
-	if err != nil {
-		log.Println("Error parsing template:", err)
-		return nil, err
-	}
-
-	// Execute the template with the players data
 	var tplBuffer bytes.Buffer
-	err = tmpl.Execute(&tplBuffer, players)
+	err = utils.Templates.ExecuteTemplate(&tplBuffer, "gameHome", players)
 	if err != nil {
 		log.Println("Error executing template:", err)
 		return nil, err
