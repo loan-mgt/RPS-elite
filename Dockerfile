@@ -31,8 +31,8 @@ FROM alpine:latest
 COPY --from=builder /app /app
 
 # Copy the necessary files for the application
-COPY --from=builder /build/internal /build/internal
 COPY --from=builder /build/static /static
+COPY --from=builder /build/template /template
 
 # Command to run the executable
 CMD ["/app"]
