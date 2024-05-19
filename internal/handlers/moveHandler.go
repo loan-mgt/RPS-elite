@@ -8,6 +8,7 @@ import (
 	"log"
 	"rcp/elite/internal/services"
 	"rcp/elite/internal/utils"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -76,6 +77,23 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 				if err != nil {
 					log.Println("Failed to send opponent move:", err)
 				}
+
+				go func() {
+					time.Sleep(5 * time.Second)
+					message := "test after 5s"
+					if err := sendMessage(conn, message); err != nil {
+						log.Println("Error sending message to player:", err)
+					}
+
+					opponent, err := services.GetOpponent(player.Name)
+					if err != nil {
+						log.Println("Failed getting opponent:", err)
+					} else {
+						if err := sendMessage(opponent.Conn, message); err != nil {
+							log.Println("Error sending message to opponent:", err)
+						}
+					}
+				}()
 
 			}
 
