@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	utils.InitializeTemplates("template/*.gohtml")
+	utils.InitializeTemplates("template/*.tmpl")
 
 	r := mux.NewRouter()
 
