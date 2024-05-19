@@ -1,5 +1,7 @@
 {{ define "move" }}
-<div hx-swap-oob="innerHTML:#{{.TargetId}}">
-    <img class="w-full h-full" src="/assets/images/{{.Move}}.svg" alt="{{.Move}}" />
-</div>
+    <div hx-swap-oob="innerHTML:#{{.TargetId}}">
+        {{ if .Move }}
+            <img class="w-full h-full" src="/assets/images/{{.Move}}.svg" alt="{{.Move}}" />
+        {{ end }}
+    </div>
 {{ end }}

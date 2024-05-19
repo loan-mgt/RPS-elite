@@ -19,7 +19,7 @@ type MoveRequest struct {
 
 type MoveData struct {
 	TargetId string
-	Move     string
+	Move     *string
 }
 
 type Messenger struct {
@@ -48,7 +48,7 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 
 	playerMoveData := MoveData{
 		TargetId: "player-selected-move",
-		Move:     request.Move,
+		Move:     &request.Move,
 	}
 
 	var tplBuffer bytes.Buffer
@@ -73,26 +73,53 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 				if err != nil {
 					log.Println("Failed to send opponent move:", err)
 				}
+
 				err = sendMove(player.Conn, "opponent", opponent.Move)
 				if err != nil {
 					log.Println("Failed to send opponent move:", err)
 				}
 
+				message := "next round in 3s"
+				if err := sendMessage(conn, message); err != nil {
+					log.Println("Error sending message to player:", err)
+				}
+
+				opponent, err := services.GetOpponent(player.Name)
+				if err != nil {
+					log.Println("Failed getting opponent:", err)
+				} else {
+					if err := sendMessage(opponent.Conn, message); err != nil {
+						log.Println("Error sending message to opponent:", err)
+					}
+				}
+
 				go func() {
-					time.Sleep(5 * time.Second)
-					message := "test after 5s"
-					if err := sendMessage(conn, message); err != nil {
-						log.Println("Error sending message to player:", err)
+					time.Sleep(3 * time.Second)
+
+					services.SetPlayerMove(player.Name, "")
+
+					services.SetPlayerMove(opponent.Name, "")
+
+					err = resetMove(opponent.Conn, "player")
+					if err != nil {
+						log.Println("Failed to send player move:", err)
 					}
 
-					opponent, err := services.GetOpponent(player.Name)
+					err = resetMove(opponent.Conn, "opponent")
 					if err != nil {
-						log.Println("Failed getting opponent:", err)
-					} else {
-						if err := sendMessage(opponent.Conn, message); err != nil {
-							log.Println("Error sending message to opponent:", err)
-						}
+						log.Println("Failed to send opponent move:", err)
 					}
+
+					err = resetMove(player.Conn, "player")
+					if err != nil {
+						log.Println("Failed to send player move:", err)
+					}
+
+					err = resetMove(player.Conn, "opponent")
+					if err != nil {
+						log.Println("Failed to send opponent move:", err)
+					}
+
 				}()
 
 			}
@@ -141,7 +168,23 @@ func sendMessage(conn *websocket.Conn, message string) error {
 func sendMove(conn *websocket.Conn, to string, move string) error {
 	moveData := MoveData{
 		TargetId: fmt.Sprintf("%s-selected-move", to),
-		Move:     move,
+		Move:     &move,
+	}
+
+	var tplBufferOpponent bytes.Buffer
+	err := utils.Templates.ExecuteTemplate(&tplBufferOpponent, "move", moveData)
+	if err != nil {
+		log.Println("Error executing template for opponent:", err)
+		return err
+	}
+
+	return conn.WriteMessage(websocket.TextMessage, tplBufferOpponent.Bytes())
+
+}
+
+func resetMove(conn *websocket.Conn, to string) error {
+	moveData := MoveData{
+		TargetId: fmt.Sprintf("%s-selected-move", to),
 	}
 
 	var tplBufferOpponent bytes.Buffer
