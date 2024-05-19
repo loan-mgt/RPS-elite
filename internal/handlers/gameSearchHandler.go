@@ -3,67 +3,91 @@ package handlers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log"
 
-	"github.com/gorilla/websocket"
-
+	"rcp/elite/internal/services"
+	"rcp/elite/internal/types"
 	"rcp/elite/internal/utils"
+
+	"github.com/gorilla/websocket"
 )
 
-type Player struct {
-	ID    string          `json:"id"`
-	Name  string          `json:"name"`
-	Move  string          `json:"move"`
-	Flag  string          `json:"flag"`
-	Score int             `json:"score"`
-	Conn  *websocket.Conn `json:"conn"`
-}
-
-func (p Player) String() string {
-	return fmt.Sprintf("Player{ID: %s, Name: %s, Move: %s, Flag: %s, Score: %d}", p.ID, p.Name, p.Move, p.Flag, p.Score)
+type OpponentInfo struct {
+	Opponent *types.Player
 }
 
 type PlayersData struct {
-	Player   Player
-	Opponent Player
+	Player   *types.Player
+	Opponent *types.Player
+	Messenger
 }
 
 type GameSearchRequest struct {
 	Username string `json:"username"`
 }
 
-func HandleGameSearch(message []byte) ([]byte, error) {
-
+func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 	var request GameSearchRequest
 	err := json.Unmarshal(message, &request)
 	if err != nil {
 		log.Println("Error parsing message:", err)
-		return nil, err
+		return err
 	}
 
-	player1 := Player{
-		ID:    "1",
-		Name:  "Player 1",
-		Move:  "rock",
-		Flag:  "BE",
-		Score: 0,
-		Conn:  nil, // Add the appropriate connection
-	}
-
-	player2 := Player{
-		ID:    "2",
+	player := &types.Player{
 		Name:  request.Username,
-		Move:  "paper",
+		Move:  "",
 		Flag:  "FR",
 		Score: 0,
-		Conn:  nil, // Add the appropriate connection
+		Conn:  conn,
 	}
 
-	// Create a struct containing both players
+	if !services.IsPlayerInGame(request.Username) && services.IsGameFull() {
+		return errors.New("no game available")
+	} else if !services.IsPlayerInGame(request.Username) {
+		err := services.AddPlayer(player)
+		if err != nil {
+			log.Println("Error adding player:", err)
+			return err
+		}
+	}
+
+	opponent, err := services.GetOpponent(request.Username)
+	if err != nil {
+		log.Println("Error getting opponent:", err)
+	} else {
+		log.Println("Opponent:", opponent)
+
+		opponentInfo := OpponentInfo{
+			Opponent: player,
+		}
+
+		var tplBuffer bytes.Buffer
+		err = utils.Templates.ExecuteTemplate(&tplBuffer, "opponent-info", opponentInfo)
+		if err != nil {
+			log.Println("Error executing template:", err)
+			return err
+		}
+
+		opponent.Conn.WriteMessage(websocket.TextMessage, tplBuffer.Bytes())
+
+		var tplBuffer2 bytes.Buffer
+		err = utils.Templates.ExecuteTemplate(&tplBuffer2, "opponent-panel", opponentInfo)
+		if err != nil {
+			log.Println("Error executing template:", err)
+			return err
+		}
+
+		opponent.Conn.WriteMessage(websocket.TextMessage, tplBuffer2.Bytes())
+	}
+
 	players := PlayersData{
-		Player:   player1,
-		Opponent: player2,
+		Player:   player,
+		Opponent: opponent,
+		Messenger: Messenger{
+			Message: "Welcome",
+		},
 	}
 
 	// Parse the template
@@ -71,9 +95,8 @@ func HandleGameSearch(message []byte) ([]byte, error) {
 	err = utils.Templates.ExecuteTemplate(&tplBuffer, "gameHome", players)
 	if err != nil {
 		log.Println("Error executing template:", err)
-		return nil, err
+		return err
 	}
 
-	return tplBuffer.Bytes(), nil
-
+	return conn.WriteMessage(websocket.TextMessage, tplBuffer.Bytes())
 }

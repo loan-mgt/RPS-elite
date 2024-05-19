@@ -1,0 +1,7 @@
+{{ define "messenger" }}
+    <div id="console" class="flex items-center h-16 w-full justify-center">
+    {{ if .Message }}
+      <p>{{.Message}}</p>
+      {{ end }}
+   </div>
+{{ end }}

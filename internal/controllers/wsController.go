@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"rcp/elite/internal/handlers"
+	"rcp/elite/internal/services"
 
 	"github.com/gorilla/websocket"
 )
@@ -31,43 +32,75 @@ func MainController(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	handleWebSocket(conn)
+}
+
+func handleWebSocket(conn *websocket.Conn) {
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
-			return
+			handleReadError(err, conn)
+			break
 		}
 
 		log.Printf("Received message: %s type: %s\n", message, string(rune(messageType)))
 
-		var response []byte
-
 		var msg Message
-		err = json.Unmarshal(message, &msg)
-		if err != nil {
+		if err := json.Unmarshal(message, &msg); err != nil {
 			log.Println("Error parsing message:", err)
 			continue
 		}
 
-		switch msg.Type {
-		case "game-search":
-			response, err = handlers.HandleGameSearch(message)
-		case "move":
-			response, err = handlers.HandleMove(message)
-		default:
-			log.Println("Unknown message type:", msg.Type)
-			continue
-		}
-
+		err = handleMessage(msg, message, conn)
 		if err != nil {
-			log.Println("Error writing response to client:", err)
+			handleWriteError(err, conn)
 			continue
 		}
+	}
+}
 
-		err = conn.WriteMessage(websocket.TextMessage, response)
+func handleReadError(err error, conn *websocket.Conn) {
+	if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+		log.Println("Client disconnected: going away")
+		player, err := services.GetPlayerFromConn(conn)
 		if err != nil {
-			log.Println("Error writing response to client:", err)
-			continue
+			log.Printf("Uanble to find player to remove: %v", err)
+		} else {
+			err = services.RemovePlayer(player.Name)
+			log.Printf("Unable to remove player: %v", err)
 		}
+	} else if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
+		log.Printf("Client disconnected unexpectedly: %v", err)
+	} else {
+		log.Printf("Error reading message: %v", err)
+	}
+}
+
+func handleWriteError(err error, conn *websocket.Conn) {
+	if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+		log.Println("Client disconnected: going away")
+		player, err := services.GetPlayerFromConn(conn)
+		if err != nil {
+			log.Printf("Uanble to find player to remove: %v", err)
+		} else {
+			err = services.RemovePlayer(player.Name)
+			log.Printf("Unable to remove player: %v", err)
+		}
+	} else if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
+		log.Printf("Client disconnected while sending message: %v", err)
+	} else {
+		log.Printf("Error writing response to client: %v", err)
+	}
+}
+
+func handleMessage(msg Message, originalMessage []byte, conn *websocket.Conn) error {
+	switch msg.Type {
+	case "game-search":
+		return handlers.HandleGameSearch(originalMessage, conn)
+	case "move":
+		return handlers.HandleMove(originalMessage, conn)
+	default:
+		log.Println("Unknown message type:", msg.Type)
+		return nil
 	}
 }

@@ -1,0 +1,14 @@
+{{ define "opponent-panel"}}
+    {{ if not .Opponent }}
+    <div id="opponent-panel" class="flex flex-col w-1/2 h-full items-center gap-2">
+        <img class="h-44 w-auto" src="/assets/images/animated_logo.svg" alt="animated logo" />
+        <p class="text-sm">Searching for opponent of your caliber 😉</p>
+      </div>
+        
+    {{ else }}
+        <div id="opponent-panel" class="flex flex-col w-1/2 h-full items-center gap-2">
+            <div id="opponent-selected-move" class="bg-white rounded-xl w-36 h-36 border-primary border-2 p-2">
+            </div>
+        </div>
+    {{ end }}
+{{ end }}
