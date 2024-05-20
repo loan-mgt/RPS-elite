@@ -16,5 +16,8 @@ jobs:
         key: ${{ secrets.KEY }}
         port: ${{ secrets.PORT }}
         script: |
-          whoami
-          ls
+          cd /opt/stacks/rps-elite/
+          docker compose pull
+          docker image prune -f
+          docker compose up --force-recreate --build -d
+
