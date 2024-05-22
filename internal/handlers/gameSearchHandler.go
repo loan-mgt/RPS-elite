@@ -8,20 +8,11 @@ import (
 
 	"rcp/elite/internal/services"
 	"rcp/elite/internal/types"
+	templatedata "rcp/elite/internal/types/template-data"
 	"rcp/elite/internal/utils"
 
 	"github.com/gorilla/websocket"
 )
-
-type OpponentInfo struct {
-	Opponent *types.Player
-}
-
-type PlayersData struct {
-	Player   *types.Player
-	Opponent *types.Player
-	Messenger
-}
 
 type GameSearchRequest struct {
 	Username string `json:"username"`
@@ -59,7 +50,7 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 	} else {
 		log.Println("Opponent:", opponent)
 
-		opponentInfo := OpponentInfo{
+		opponentInfo := templatedata.OpponentInfo{
 			Opponent: player,
 		}
 
@@ -82,10 +73,10 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 		opponent.Conn.WriteMessage(websocket.TextMessage, tplBuffer2.Bytes())
 	}
 
-	players := PlayersData{
+	players := templatedata.Home{
 		Player:   player,
 		Opponent: opponent,
-		Messenger: Messenger{
+		Messenger: templatedata.Messenger{
 			Message: "Welcome",
 		},
 	}
