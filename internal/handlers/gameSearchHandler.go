@@ -52,6 +52,10 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 
 		opponentInfo := templatedata.OpponentInfo{
 			Opponent: player,
+			Score: templatedata.Score{
+				TargetId: "opponent",
+				Score:    0,
+			},
 		}
 
 		var tplBuffer bytes.Buffer
@@ -74,8 +78,14 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 	}
 
 	players := templatedata.Home{
-		Player:   player,
-		Opponent: opponent,
+		Player: player,
+		OpponentInfo: &templatedata.OpponentInfo{
+			Opponent: opponent,
+			Score: templatedata.Score{
+				TargetId: "opponent",
+				Score:    0,
+			},
+		},
 		Messenger: templatedata.Messenger{
 			Message: "Welcome",
 		},

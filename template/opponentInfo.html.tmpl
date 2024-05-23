@@ -1,21 +1,18 @@
 {{define "opponent-info" }}
     {{ if not .Opponent }}
-    <div id="player2-info" class="flex gap-5 items-center">
+    <div id="opponent-info" class="flex gap-5 items-center">
         <div class="h-[64px] w-[64px] bg-slate-400"></div>
         <p class="font-semibold bg-slate-400 w-[20px]"></p>
     </div>
-        <div id="player2-score" class="flex items-center gap-5">
+        <div id="opponent-score" class="flex items-center gap-5">
             <p>None</p>
             * 0
         </div>
     {{ else }}
-        <div id="player2-info" class="flex gap-5 items-center">
+        <div id="opponent-info" class="flex gap-5 items-center">
             <img src="https://flagsapi.com/{{.Opponent.Flag}}/flat/64.png" alt="player flag" />
             <p class="font-semibold">{{.Opponent.Name}}</p>
         </div>
-        <div id="player2-score" class="flex items-center gap-5">
-            <p>{{.Opponent.Flag}}</p>
-            * {{.Opponent.Score}}
-        </div>
+        {{ template "score" .Score}}
     {{ end }}
 {{ end }}
