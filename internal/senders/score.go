@@ -11,8 +11,9 @@ import (
 
 func SetScore(conn *websocket.Conn, of string, score int) error {
 	moveData := templatedata.Score{
-		TargetId: of,
-		Score:    score,
+		TargetId:  of,
+		Score:     score,
+		ScoreLoop: make([]int, score),
 	}
 
 	var tplBufferOpponent bytes.Buffer

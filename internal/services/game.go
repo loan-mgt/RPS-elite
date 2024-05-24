@@ -59,14 +59,25 @@ func SetPlayerMove(playerName, move string) error {
 	defer mutex.Unlock()
 
 	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		gameInstance.Player1.Move = move
+		gameInstance.Player1.Move = &move
 		return nil
 	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		gameInstance.Player2.Move = move
+		gameInstance.Player2.Move = &move
 		return nil
 	} else {
 		return errors.New("player not found")
 	}
+}
+
+func HaveAllPlayersSelectedMove() (bool, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if gameInstance.Player1 == nil || gameInstance.Player2 == nil {
+		return false, errors.New("not all players have been set")
+	}
+
+	return gameInstance.Player1.Move != nil && gameInstance.Player2.Move != nil, nil
 }
 
 func GetRound() int {

@@ -1,6 +1,13 @@
 {{ define "score" }}
 
 <div id="{{.TargetId}}-score" class="flex items-center gap-5">
-            {{.Score}}
+    {{ $targetId := .TargetId }}
+    {{ range $val := .ScoreLoop }}
+        {{ if eq  $targetId "opponent" }}
+            <div class="h-5 w-5 rounded-full bg-red-500"></div>
+        {{ else }}
+            <div class="h-5 w-5 rounded-full bg-blue-500"></div>
+        {{ end }}
+    {{ end }}
 </div>
 {{ end }}

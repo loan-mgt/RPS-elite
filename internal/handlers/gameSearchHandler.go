@@ -28,7 +28,7 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 
 	player := &types.Player{
 		Name:  request.Username,
-		Move:  "",
+		Move:  nil,
 		Flag:  "FR",
 		Score: 0,
 		Conn:  conn,

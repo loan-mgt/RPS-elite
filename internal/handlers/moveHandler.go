@@ -56,13 +56,13 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 		log.Println("Unalbe to get oppoent infos:", err)
 	} else {
 
-		if opponent.Move != "" {
+		if opponent.Move != nil {
 
 			opponent, err := services.GetOpponent(player.Name)
 			if err != nil {
 				log.Println("Failed getting opponent:", err)
 			} else {
-				err = senders.SendMove(opponent.Conn, "opponent", request.Move)
+				err = senders.SendMove(opponent.Conn, "opponent", &request.Move)
 				if err != nil {
 					log.Println("Failed to send opponent move:", err)
 				}
