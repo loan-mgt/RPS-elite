@@ -54,15 +54,15 @@ func GetPlayerStatus(playerName string) (*types.Player, error) {
 	}
 }
 
-func SetPlayerMove(playerName, move string) error {
+func SetPlayerMove(playerName string, move *string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		gameInstance.Player1.Move = &move
+		gameInstance.Player1.Move = move
 		return nil
 	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		gameInstance.Player2.Move = &move
+		gameInstance.Player2.Move = move
 		return nil
 	} else {
 		return errors.New("player not found")
@@ -78,6 +78,58 @@ func HaveAllPlayersSelectedMove() (bool, error) {
 	}
 
 	return gameInstance.Player1.Move != nil && gameInstance.Player2.Move != nil, nil
+}
+
+func GetWinner() (player *types.Player, tie bool, err error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if gameInstance.Player1 == nil || gameInstance.Player2 == nil {
+		return nil, false, errors.New("not all players have been set")
+	}
+
+	if gameInstance.Player1.Move == nil || gameInstance.Player2.Move == nil {
+		return nil, false, errors.New("one or more player has not selected a move")
+	}
+
+	if gameInstance.Player1.Move == gameInstance.Player2.Move {
+		return nil, true, nil
+	}
+
+	winingMove := getWinningMove(*gameInstance.Player1.Move, *gameInstance.Player2.Move)
+
+	if winingMove == *gameInstance.Player1.Move {
+		return gameInstance.Player1, false, nil
+	}
+
+	return gameInstance.Player2, false, nil
+
+}
+
+// waring tie are not handeled
+func getWinningMove(move1 string, move2 string) string {
+	if (move1 == "rock" || move2 == "rock") && (move1 == "paper" || move2 == "paper") {
+		return "paper"
+	} else if move1 == "rock" || move2 == "rock" {
+		return "rock"
+	} else {
+		return "scissor"
+	}
+}
+
+func IncrementPlayerScore(playerName string, amount int) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if playerName == gameInstance.Player1.Name {
+		gameInstance.Player1.Score += amount
+		return nil
+	} else if playerName == gameInstance.Player2.Name {
+		gameInstance.Player2.Score += amount
+		return nil
+	}
+	return errors.New("unable to find player from name")
+
 }
 
 func GetRound() int {

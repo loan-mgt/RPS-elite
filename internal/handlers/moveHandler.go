@@ -37,7 +37,7 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 		return err
 	}
 
-	services.SetPlayerMove(player.Name, request.Move)
+	services.SetPlayerMove(player.Name, &request.Move)
 
 	playerMoveData := templatedata.Move{
 		TargetId: "player-selected-move",
@@ -81,12 +81,22 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 				}
 			}
 
+			winner, tie, err := services.GetWinner()
+			if err != nil {
+				log.Println("Failed to get winnner")
+			} else {
+				services.IncrementRound()
+				if !tie {
+					err = services.IncrementPlayerScore(winner.Name, 1)
+				}
+			}
+
 			go func() {
 				time.Sleep(3 * time.Second)
 
-				services.SetPlayerMove(player.Name, "")
+				services.SetPlayerMove(player.Name, nil)
 
-				services.SetPlayerMove(opponent.Name, "")
+				services.SetPlayerMove(opponent.Name, nil)
 
 				err = senders.ResetMove(opponent.Conn, "player")
 				if err != nil {
@@ -108,12 +118,12 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 					log.Println("Failed to send opponent move:", err)
 				}
 
-				err = senders.SetScore(player.Conn, "opponent", 2)
+				err = senders.SetScore(player.Conn, "opponent", opponent.Score)
 				if err != nil {
 					log.Println("Failed to send opponent score:", err)
 				}
 
-				err = senders.SetScore(opponent.Conn, "opponent", 2)
+				err = senders.SetScore(opponent.Conn, "opponent", player.Score)
 				if err != nil {
 					log.Println("Failed to send opponent score:", err)
 				}
