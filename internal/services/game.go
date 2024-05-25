@@ -11,6 +11,7 @@ import (
 var (
 	gameInstance = &types.Game{}
 	mutex        = &sync.Mutex{}
+	objective    = 3
 )
 
 func IsGameFull() bool {
@@ -191,4 +192,28 @@ func RemovePlayer(playerName string) error {
 	} else {
 		return errors.New("player not found")
 	}
+}
+
+func IsGameFinish() (bool, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if gameInstance.Player1 == nil || gameInstance.Player2 == nil {
+		return false, nil
+	}
+
+	return gameInstance.Player1.Score >= objective || gameInstance.Player2.Score >= objective, nil
+}
+
+func IsPlayerWinner(playerName string) (bool, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
+		return gameInstance.Player1.Score >= objective, nil
+	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
+		return gameInstance.Player2.Score >= objective, nil
+	}
+	return false, errors.New("unable to find player")
+
 }

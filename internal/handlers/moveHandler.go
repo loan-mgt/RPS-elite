@@ -138,6 +138,23 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 					log.Println("Failed to send player score:", err)
 				}
 
+				finished, err := services.IsGameFinish()
+				if err != nil {
+					log.Println("Failed to check if game has finsihed", err)
+				} else if finished {
+
+					err = senders.SendEndScreen(player.Conn, getEndMessage(player.Name))
+					if err != nil {
+						log.Println("Failed to send endscreen")
+					}
+
+					err = senders.SendEndScreen(opponent.Conn, getEndMessage(opponent.Name))
+					if err != nil {
+						log.Println("Failed to send endscreen")
+					}
+
+				}
+
 			}()
 
 		}
@@ -162,4 +179,12 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 	}
 
 	return conn.WriteMessage(websocket.TextMessage, tplBuffer.Bytes())
+}
+
+func getEndMessage(playerName string) string {
+	winner, _ := services.IsPlayerWinner(playerName)
+	if winner {
+		return "He wasn't a great opponent. You did an okay job. You have won this time"
+	}
+	return "I haven't seen a worse player than you. You have lost this game"
 }
