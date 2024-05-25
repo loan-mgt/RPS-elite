@@ -128,6 +128,16 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 					log.Println("Failed to send opponent score:", err)
 				}
 
+				err = senders.SetScore(player.Conn, "player", player.Score)
+				if err != nil {
+					log.Println("Failed to send player score:", err)
+				}
+
+				err = senders.SetScore(opponent.Conn, "player", opponent.Score)
+				if err != nil {
+					log.Println("Failed to send player score:", err)
+				}
+
 			}()
 
 		}

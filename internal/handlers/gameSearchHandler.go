@@ -50,8 +50,9 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 	} else {
 		log.Println("Opponent:", opponent)
 
-		opponentInfo := templatedata.OpponentInfo{
-			Opponent: player,
+		opponentInfo := templatedata.PlayerInfo{
+			TargetId: "opponent",
+			Player:   player,
 			Score: templatedata.Score{
 				TargetId: "opponent",
 				Score:    0,
@@ -59,7 +60,7 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 		}
 
 		var tplBuffer bytes.Buffer
-		err = utils.Templates.ExecuteTemplate(&tplBuffer, "opponent-info", opponentInfo)
+		err = utils.Templates.ExecuteTemplate(&tplBuffer, "player-info", opponentInfo)
 		if err != nil {
 			log.Println("Error executing template:", err)
 			return err
@@ -79,10 +80,19 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 
 	players := templatedata.Home{
 		Player: player,
-		OpponentInfo: &templatedata.OpponentInfo{
-			Opponent: opponent,
+		OpponentInfo: &templatedata.PlayerInfo{
+			Player:   opponent,
+			TargetId: "opponent",
 			Score: templatedata.Score{
 				TargetId: "opponent",
+				Score:    0,
+			},
+		},
+		PlayerInfo: &templatedata.PlayerInfo{
+			Player:   player,
+			TargetId: "player",
+			Score: templatedata.Score{
+				TargetId: "player",
 				Score:    0,
 			},
 		},

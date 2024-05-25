@@ -1,0 +1,16 @@
+{{define "player-info" }}
+    {{ if not .Player }}
+    <div id="{{.TargetId}}-info" class="flex gap-5 items-center">
+        <div class="h-[64px] w-[64px] bg-slate-400"></div>
+        <p class="font-semibold bg-slate-400 w-[20px]"></p>
+    </div>
+        <div id="{{.TargetId}}-score" class="flex items-center gap-5">
+        </div>
+    {{ else }}
+        <div id="{{.TargetId}}-info" class="flex gap-5 items-center">
+            <img src="https://flagsapi.com/{{.Player.Flag}}/flat/64.png" alt="player flag" />
+            <p class="font-semibold">{{.Player.Name}}</p>
+        </div>
+        {{ template "score" .Score}}
+    {{ end }}
+{{ end }}
