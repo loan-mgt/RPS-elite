@@ -1,7 +1,14 @@
 {{ define "messenger" }}
-    <div id="console" class="flex items-center h-16 w-full justify-center">
+    <div id="console" class="flex items-center h-16 w-full justify-center flex-col">
     {{ if .Message }}
       <p>{{.Message}}</p>
       {{ end }}
+
+      {{ if .Timer}}
+      <div class="rounded-full bg-slate-400 w-[28rem] h-[1rem] flex justify-center">
+         <div class="rounded-full bg-orange-400 empty-3s w-full h-full">
+         </div>
+      </div>
+      {{ end}}
    </div>
 {{ end }}

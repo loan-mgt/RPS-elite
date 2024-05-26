@@ -28,3 +28,18 @@
 .border-primary{
     border-color: var(--primary-color);
 }
+
+.empty-3s{
+  animation: 3s ease-out 0s empty;
+  animation-fill-mode: forwards;
+}
+
+.empty-5s{
+  animation: 5s ease-out 0s empty;
+  animation-fill-mode: forwards;
+}
+
+@keyframes empty {
+  from { width: 100%; }
+  to   { width: 0%; }
+}

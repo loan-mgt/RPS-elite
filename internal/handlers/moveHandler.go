@@ -68,7 +68,8 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 			}
 
 			message := "next round in 3s"
-			if err := senders.SendMessage(conn, message); err != nil {
+			timer := "3s"
+			if err := senders.SendMessage(conn, message, &timer); err != nil {
 				log.Println("Error sending message to player:", err)
 			}
 
@@ -76,7 +77,7 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 			if err != nil {
 				log.Println("Failed getting opponent:", err)
 			} else {
-				if err := senders.SendMessage(opponent.Conn, message); err != nil {
+				if err := senders.SendMessage(opponent.Conn, message, &timer); err != nil {
 					log.Println("Error sending message to opponent:", err)
 				}
 			}
@@ -138,6 +139,15 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 					log.Println("Failed to send player score:", err)
 				}
 
+				message = "Please make a move"
+				if err := senders.SendMessage(conn, message, nil); err != nil {
+					log.Println("Error sending message to player:", err)
+				}
+
+				if err := senders.SendMessage(opponent.Conn, message, nil); err != nil {
+					log.Println("Error sending message to opponent:", err)
+				}
+
 				finished, err := services.IsGameFinish()
 				if err != nil {
 					log.Println("Failed to check if game has finsihed", err)
@@ -163,7 +173,7 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 		messagePlayer := "Waiting for your opponent to make a move"
 		messageOpponent := fmt.Sprintf("%s is waiting on you, please select a move", player.Name)
 
-		if err := senders.SendMessage(conn, messagePlayer); err != nil {
+		if err := senders.SendMessage(conn, messagePlayer, nil); err != nil {
 			log.Println("Error sending message to player:", err)
 		}
 
@@ -171,7 +181,7 @@ func HandleMove(message []byte, conn *websocket.Conn) error {
 		if err != nil {
 			log.Println("Failed getting opponent:", err)
 		} else {
-			if err := senders.SendMessage(opponent.Conn, messageOpponent); err != nil {
+			if err := senders.SendMessage(opponent.Conn, messageOpponent, nil); err != nil {
 				log.Println("Error sending message to opponent:", err)
 			}
 		}
