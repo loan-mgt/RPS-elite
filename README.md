@@ -12,4 +12,4 @@
 
 Start tailwind watcher:
 ```bash
-npx tailwindcss -i ./static/styles/input.css -o ./static/styles/output.css --watch```
+npx tailwindcss -i ./static/styles/input.css -o ./static/styles/output.css --minify```
