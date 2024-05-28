@@ -93,7 +93,7 @@ func GetWinner() (player *types.Player, tie bool, err error) {
 		return nil, false, errors.New("one or more player has not selected a move")
 	}
 
-	if gameInstance.Player1.Move == gameInstance.Player2.Move {
+	if *gameInstance.Player1.Move == *gameInstance.Player2.Move {
 		return nil, true, nil
 	}
 
