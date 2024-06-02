@@ -9,10 +9,31 @@ import (
 )
 
 var (
-	gameInstance = &types.Game{}
-	mutex        = &sync.Mutex{}
-	objective    = 3
+	playerPoll         = map[string]types.Player{}
+	playerPollMutex    = &sync.Mutex{}
+	gamePoll           = map[string]types.Game{}
+	gamePollMutex      = &sync.Mutex{}
+	playerGameMap      = map[string]string{}
+	playerGameMapMutex = &sync.Mutex{}
+	objective          = 3
 )
+
+
+func isPlayerInGame(playerName string) bool;
+
+func joinPlayerPoll(player types.Player) error;
+
+func startMonitorOnPlayer(playerNames string);
+
+func searchForGameToCreate();
+
+
+
+
+
+
+
+
 
 func IsGameFull() bool {
 	mutex.Lock()
