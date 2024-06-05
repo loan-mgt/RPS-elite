@@ -1,9 +1,13 @@
 package services
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"rcp/elite/internal/types"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -18,223 +22,297 @@ var (
 	objective          = 3
 )
 
+func isPlayerInGame(playerName string) bool {
+	playerGameMapMutex.Lock()
+	defer playerGameMapMutex.Unlock()
+	_, ok := playerGameMap[playerName]
 
-func isPlayerInGame(playerName string) bool;
+	return ok
+}
 
-func joinPlayerPoll(player types.Player) error;
+func isPlayerInPool(playerName string) bool {
+	playerPollMutex.Lock()
+	defer playerPollMutex.Unlock()
+	_, ok := playerPoll[playerName]
 
-func startMonitorOnPlayer(playerNames string);
+	return ok
+}
 
-func searchForGameToCreate();
+func joinPlayerPoll(player types.Player) error {
+	if isPlayerInGame(player.Name) {
+		return errors.New("Player is in game")
+	}
 
+	if isPlayerInPool(player.Name) {
+		return nil
+	}
 
+	playerPoll[player.Name] = player
+	return nil
+}
 
+func startPollMonitor() {
+	go func() {
+		time.Sleep(3 * time.Second)
+		playerPollMutex.Lock()
+		for k, v := range playerPoll {
+			err := sendPing(v)
+			if err != nil {
+				delete(playerPoll, k)
+			}
+		}
+		playerPollMutex.Unlock()
+	}()
+}
 
+func sendPing(player types.Player) error {
+	return player.Conn.WriteMessage(websocket.PingMessage, []byte(""))
+}
 
+func searchForGameToCreate() {
+	go func() {
+		time.Sleep(3 * time.Second)
+		playerPollMutex.Lock()
+		var opponent *types.Player
+		opponent = nil
+		for k, v := range playerPoll {
+			if opponent == nil {
+				opponent = &v
+			} else {
+				createGame(*opponent, v)
+				delete(playerPoll, k)
+				delete(playerPoll, opponent.Name)
+				opponent = nil
+			}
+		}
+		playerPollMutex.Unlock()
+	}()
+}
 
+func createGame(player1, player2 types.Player) {
 
+	gameId := generateGameId(player1.Name, player2.Name, time.Now().Unix())
 
+	gamePollMutex.Lock()
 
-func IsGameFull() bool {
-	mutex.Lock()
-	defer mutex.Unlock()
-	return gameInstance.Player1 != nil && gameInstance.Player2 != nil
+	gamePoll[gameId] = types.Game{
+		Players: map[string]types.Player{
+			player1.Name: player1,
+			player2.Name: player2,
+		},
+		Round: 1,
+	}
+
+	gamePollMutex.Unlock()
+
+	playerGameMapMutex.Lock()
+
+	playerGameMap[player1.Name] = gameId
+	playerGameMap[player2.Name] = gameId
+
+	playerGameMapMutex.Unlock()
+
+	go mainGameLoop(gameId)
+
+}
+
+func generateGameId(player1Name, player2Name string, unixTime int64) string {
+	combinedInput := fmt.Sprintf("%s%s%d", player1Name, player2Name, unixTime)
+
+	hash := sha256.New()
+
+	hash.Write([]byte(combinedInput))
+
+	hashBytes := hash.Sum(nil)
+
+	hashString := hex.EncodeToString(hashBytes)
+
+	return hashString
 }
 
 func IsPlayerInGame(playerName string) bool {
-	mutex.Lock()
-	defer mutex.Unlock()
-	return (gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName) ||
-		(gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName)
-}
-
-func AddPlayer(player *types.Player) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if gameInstance.Player1 == nil {
-		gameInstance.Player1 = player
-		return nil
-	} else if gameInstance.Player2 == nil {
-		gameInstance.Player2 = player
-		return nil
-	} else {
-		return errors.New("game is already full")
-	}
+	playerGameMapMutex.Lock()
+	defer playerGameMapMutex.Unlock()
+	_, ok := playerGameMap[playerName]
+	return ok
 }
 
 func GetPlayerStatus(playerName string) (*types.Player, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	playerGameMapMutex.Lock()
+	v, ok := playerGameMap[playerName]
+	playerGameMapMutex.Unlock()
 
-	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		return gameInstance.Player1, nil
-	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		return gameInstance.Player2, nil
-	} else {
-		return nil, errors.New("player not found")
+	if !ok {
+		return nil, errors.New("player not in game")
 	}
+
+	gamePollMutex.Lock()
+	g, ok := gamePoll[v]
+	gamePollMutex.Unlock()
+
+	if !ok {
+		return nil, errors.New("game not found")
+	}
+
+	p, ok := g.Players[playerName]
+
+	if !ok {
+		return nil, errors.New("player not found in game")
+	}
+
+	return &p, nil
 }
 
-func SetPlayerMove(playerName string, move *string) error {
-	mutex.Lock()
-	defer mutex.Unlock()
+func SetPlayerMove(playerName string, move string) error {
 
-	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		gameInstance.Player1.Move = move
-		return nil
-	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		gameInstance.Player2.Move = move
-		return nil
-	} else {
-		return errors.New("player not found")
+	playerGameMapMutex.Lock()
+	v, ok := playerGameMap[playerName]
+	playerGameMapMutex.Unlock()
+
+	if !ok {
+		return errors.New("player not in game")
 	}
+
+	gamePollMutex.Lock()
+	g, ok := gamePoll[v]
+	gamePollMutex.Unlock()
+
+	if !ok {
+		return errors.New("game not found")
+	}
+
+	p, ok := g.Players[playerName]
+
+	if !ok {
+		return errors.New("player not found in game")
+	}
+
+	p.Move = move
+
+	g.Players[playerName] = p
+
+	gamePollMutex.Lock()
+	gamePoll[v] = g
+	gamePollMutex.Unlock()
+
+	return nil
 }
 
-func HaveAllPlayersSelectedMove() (bool, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func getGameFromId(gameId string) (types.Game, bool) {
+	gamePollMutex.Lock()
+	defer gamePollMutex.Unlock()
 
-	if gameInstance.Player1 == nil || gameInstance.Player2 == nil {
-		return false, errors.New("not all players have been set")
-	}
-
-	return gameInstance.Player1.Move != nil && gameInstance.Player2.Move != nil, nil
+	v, ok := gamePoll[gameId]
+	return v, ok
 }
 
-func GetWinner() (player *types.Player, tie bool, err error) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func mainGameLoop(gameId string) {
 
-	if gameInstance.Player1 == nil || gameInstance.Player2 == nil {
-		return nil, false, errors.New("not all players have been set")
+	//handle init for player game start in 3s
+	time.Sleep(3 * time.Second)
+
+	//game start
+	// you have 5s to select a move
+	for still2player(gameId) || noPlayerHasWin(gameId) {
+		time.Sleep(5 * time.Second)
+
+		incrementWinner(gameId)
+
+		incrementRound(gameId)
+
+		break
 	}
-
-	if gameInstance.Player1.Move == nil || gameInstance.Player2.Move == nil {
-		return nil, false, errors.New("one or more player has not selected a move")
-	}
-
-	if *gameInstance.Player1.Move == *gameInstance.Player2.Move {
-		return nil, true, nil
-	}
-
-	winingMove := getWinningMove(*gameInstance.Player1.Move, *gameInstance.Player2.Move)
-
-	if winingMove == *gameInstance.Player1.Move {
-		return gameInstance.Player1, false, nil
-	}
-
-	return gameInstance.Player2, false, nil
-
-}
-
-// waring tie are not handeled
-func getWinningMove(move1 string, move2 string) string {
-	if (move1 == "rock" || move2 == "rock") && (move1 == "paper" || move2 == "paper") {
-		return "paper"
-	} else if move1 == "rock" || move2 == "rock" {
-		return "rock"
-	} else {
-		return "scissor"
-	}
-}
-
-func IncrementPlayerScore(playerName string, amount int) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if playerName == gameInstance.Player1.Name {
-		gameInstance.Player1.Score += amount
-		return nil
-	} else if playerName == gameInstance.Player2.Name {
-		gameInstance.Player2.Score += amount
-		return nil
-	}
-	return errors.New("unable to find player from name")
 
 }
 
-func GetRound() int {
-	mutex.Lock()
-	defer mutex.Unlock()
-	return gameInstance.Round
-}
+func still2player(gameId string) bool {
+	g, ok := getGameFromId(gameId)
 
-func IncrementRound() {
-	mutex.Lock()
-	defer mutex.Unlock()
-	gameInstance.Round++
-}
-
-func GetPlayerFromConn(conn *websocket.Conn) (*types.Player, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if gameInstance.Player1 != nil && gameInstance.Player1.Conn == conn {
-		return gameInstance.Player1, nil
-	} else if gameInstance.Player2 != nil && gameInstance.Player2.Conn == conn {
-		return gameInstance.Player2, nil
-	} else {
-		return nil, errors.New("player not found for given connection")
+	if !ok {
+		return false
 	}
+
+	return len(g.Players) != 2
 }
 
-func GetOpponent(playerName string) (*types.Player, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func noPlayerHasWin(gameId string) bool {
+	g, ok := getGameFromId(gameId)
 
-	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		if gameInstance.Player2 != nil {
-			return gameInstance.Player2, nil
-		} else {
-			return nil, errors.New("opponent not found")
+	if !ok {
+		return false
+	}
+
+	for _, p := range g.Players {
+		if p.Score >= 3 {
+			return true
 		}
-	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		if gameInstance.Player1 != nil {
-			return gameInstance.Player1, nil
-		} else {
-			return nil, errors.New("opponent not found")
+	}
+
+	return false
+
+}
+
+func incrementRound(gameId string) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+	g.Round += 1
+
+	saveGame(gameId, g)
+}
+
+func saveGame(gameId string, game types.Game) {
+	gamePollMutex.Lock()
+	defer gamePollMutex.Unlock()
+
+	gamePoll[gameId] = game
+}
+
+func incrementWinner(gameId string) (string, bool) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return "", false
+	}
+
+	winner := ""
+	winnerMove := ""
+
+	for k, p := range g.Players {
+		if isLeftWinning(p.Move, winnerMove) {
+			winner = k
+			winnerMove = p.Move
 		}
-	} else {
-		return nil, errors.New("player not found")
 	}
+
+	if winner != "" {
+		tmpPlayer := g.Players[winner]
+		tmpPlayer.Score += 1
+
+		g.Players[winner] = tmpPlayer
+	}
+
+	saveGame(gameId, g)
+
+	return winner, winner == ""
+
 }
 
-func RemovePlayer(playerName string) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		gameInstance.Player1 = nil
-		return nil
-	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		gameInstance.Player2 = nil
-		return nil
-	} else {
-		return errors.New("player not found")
-	}
-}
-
-func IsGameFinish() (bool, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if gameInstance.Player1 == nil || gameInstance.Player2 == nil {
-		return false, nil
+func isLeftWinning(leftMove, rightMove string) bool {
+	if leftMove == "paper" && rightMove == "rock" {
+		return true
 	}
 
-	return gameInstance.Player1.Score >= objective || gameInstance.Player2.Score >= objective, nil
-}
-
-func IsPlayerWinner(playerName string) (bool, error) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if gameInstance.Player1 != nil && gameInstance.Player1.Name == playerName {
-		return gameInstance.Player1.Score >= objective, nil
-	} else if gameInstance.Player2 != nil && gameInstance.Player2.Name == playerName {
-		return gameInstance.Player2.Score >= objective, nil
+	if leftMove == "rock" && rightMove == "scissors" {
+		return true
 	}
-	return false, errors.New("unable to find player")
+
+	if leftMove == "scissors" && rightMove == "paper" {
+		return true
+	}
+
+	return false
 
 }

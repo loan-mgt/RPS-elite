@@ -8,16 +8,14 @@ import (
 
 type Player struct {
 	Name  string          `json:"name"`
-	Move  *string         `json:"move"`
+	Move  string          `json:"move"`
 	Flag  string          `json:"flag"`
 	Score int             `json:"score"`
+	Ping  int             `json:"ping"`
+	Pong  int             `json:"pong"`
 	Conn  *websocket.Conn `json:"conn"`
 }
 
 func (p Player) String() string {
-	move := "nil"
-	if p.Move != nil {
-		move = *p.Move
-	}
-	return fmt.Sprintf("Player{Name: %s, Move: %s, Flag: %s, Score: %d}", p.Name, move, p.Flag, p.Score)
+	return fmt.Sprintf("Player{Name: %s, Move: %s, Flag: %s, Score: %d}", p.Name, p.Move, p.Flag, p.Score)
 }
