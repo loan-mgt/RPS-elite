@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"rcp/elite/internal/handlers"
-	"rcp/elite/internal/services"
 
 	"github.com/gorilla/websocket"
 )
@@ -60,37 +59,12 @@ func handleWebSocket(conn *websocket.Conn) {
 }
 
 func handleReadError(err error, conn *websocket.Conn) {
-	if websocket.IsCloseError(err, websocket.CloseGoingAway) {
-		log.Println("Client disconnected: going away")
-		player, err := services.GetPlayerFromConn(conn)
-		if err != nil {
-			log.Printf("Uanble to find player to remove: %v", err)
-		} else {
-			err = services.RemovePlayer(player.Name)
-			log.Printf("Unable to remove player: %v", err)
-		}
-	} else if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
-		log.Printf("Client disconnected unexpectedly: %v", err)
-	} else {
-		log.Printf("Error reading message: %v", err)
-	}
+	log.Printf("Error reading message: %v", err)
+
 }
 
 func handleWriteError(err error, conn *websocket.Conn) {
-	if websocket.IsCloseError(err, websocket.CloseGoingAway) {
-		log.Println("Client disconnected: going away")
-		player, err := services.GetPlayerFromConn(conn)
-		if err != nil {
-			log.Printf("Uanble to find player to remove: %v", err)
-		} else {
-			err = services.RemovePlayer(player.Name)
-			log.Printf("Unable to remove player: %v", err)
-		}
-	} else if websocket.IsUnexpectedCloseError(err, websocket.CloseAbnormalClosure, websocket.CloseNormalClosure, websocket.CloseNoStatusReceived) {
-		log.Printf("Client disconnected while sending message: %v", err)
-	} else {
-		log.Printf("Error writing response to client: %v", err)
-	}
+	log.Printf("Error writing response to client: %v", err)
 }
 
 func handleMessage(msg Message, originalMessage []byte, conn *websocket.Conn) error {

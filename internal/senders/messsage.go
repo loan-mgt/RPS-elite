@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func SendMessage(conn *websocket.Conn, message string, timer *string) error {
+func SendMessage(conn *websocket.Conn, message string, timer string) error {
 
 	messenger := templatedata.Messenger{
 		Message: message,

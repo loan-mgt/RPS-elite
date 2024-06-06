@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"rcp/elite/internal/senders"
 	"rcp/elite/internal/types"
 	"sync"
 	"time"
@@ -22,12 +23,12 @@ var (
 	objective          = 3
 )
 
-func isPlayerInGame(playerName string) bool {
+func isPlayerInGame(playerName string) (bool, string) {
 	playerGameMapMutex.Lock()
 	defer playerGameMapMutex.Unlock()
-	_, ok := playerGameMap[playerName]
+	gId, ok := playerGameMap[playerName]
 
-	return ok
+	return ok, gId
 }
 
 func isPlayerInPool(playerName string) bool {
@@ -38,8 +39,8 @@ func isPlayerInPool(playerName string) bool {
 	return ok
 }
 
-func joinPlayerPoll(player types.Player) error {
-	if isPlayerInGame(player.Name) {
+func JoinPlayerPoll(player types.Player) error {
+	if is, _ := isPlayerInGame(player.Name); is {
 		return errors.New("Player is in game")
 	}
 
@@ -51,8 +52,8 @@ func joinPlayerPoll(player types.Player) error {
 	return nil
 }
 
-func startPollMonitor() {
-	go func() {
+func StartPollMonitor() {
+	for {
 		time.Sleep(3 * time.Second)
 		playerPollMutex.Lock()
 		for k, v := range playerPoll {
@@ -62,15 +63,15 @@ func startPollMonitor() {
 			}
 		}
 		playerPollMutex.Unlock()
-	}()
+	}
 }
 
 func sendPing(player types.Player) error {
 	return player.Conn.WriteMessage(websocket.PingMessage, []byte(""))
 }
 
-func searchForGameToCreate() {
-	go func() {
+func SearchForGameToCreate() {
+	for {
 		time.Sleep(3 * time.Second)
 		playerPollMutex.Lock()
 		var opponent *types.Player
@@ -86,7 +87,8 @@ func searchForGameToCreate() {
 			}
 		}
 		playerPollMutex.Unlock()
-	}()
+	}
+
 }
 
 func createGame(player1, player2 types.Player) {
@@ -208,6 +210,8 @@ func getGameFromId(gameId string) (types.Game, bool) {
 
 func mainGameLoop(gameId string) {
 
+	setupPlayersScreen(gameId)
+
 	//handle init for player game start in 3s
 	time.Sleep(3 * time.Second)
 
@@ -216,13 +220,51 @@ func mainGameLoop(gameId string) {
 	for still2player(gameId) || noPlayerHasWin(gameId) {
 		time.Sleep(5 * time.Second)
 
-		incrementWinner(gameId)
+		_, _ = incrementWinner(gameId)
 
 		incrementRound(gameId)
 
 		break
 	}
 
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	playerGameMapMutex.Lock()
+	for _, p := range g.Players {
+		delete(playerGameMap, p.Name)
+	}
+	playerGameMapMutex.Unlock()
+
+	gamePollMutex.Lock()
+	delete(gamePoll, gameId)
+	gamePollMutex.Unlock()
+
+}
+
+func setupPlayersScreen(gameId string) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	for _, p := range g.Players {
+		senders.SetGameHome(p.Conn, &p, getOpponent(g.Players, p), "Game will start in 3s", "empty-3s")
+	}
+}
+
+func getOpponent(players map[string]types.Player, player types.Player) *types.Player {
+
+	for _, p := range players {
+		if p.Name != player.Name {
+			return &p
+		}
+	}
+	return nil
 }
 
 func still2player(gameId string) bool {
