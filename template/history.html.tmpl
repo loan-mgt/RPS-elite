@@ -1,0 +1,26 @@
+{{ define "history-row" }}
+    <div hx-swap-oob="afterbegin:#history">
+    <div class="flex gap-3 content-center items-center h-8" >
+        {{ if ne .OpponentMove "" }}
+            <img class="w-auto h-full" src="/assets/images/{{.OpponentMove}}.svg" alt="{{.OpponentMove}}" />
+        {{ else }}
+        <div></div>
+        {{ end }}
+
+{{ if eq .Winner "" }}
+            <h4 class="font-bold">tie</h4>
+
+{{ else }}
+            <h4 class="font-bold">{{ .Winner }}</h4>
+
+{{ end }}
+
+        {{ if ne .PlayerMove "" }}
+            <img class="w-auto h-full" src="/assets/images/{{.PlayerMove}}.svg" alt="{{.PlayerMove}}" />
+        {{ else }}
+        <div></div>
+        {{ end }}
+        </div>
+
+    </div>
+{{ end }}

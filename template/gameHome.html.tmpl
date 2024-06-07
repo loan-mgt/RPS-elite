@@ -1,7 +1,7 @@
 {{ define "gameHome" }}
-<div id="main"  class="flex flex-col gap-2 p-2 items-center w-full h-full">
-   <div id="logo-header" class="flex gap-5 w-fit justify-center items-center">
-      <img class="h-12 w-auto" src="/assets/images/logo.svg" alt="logo" />
+<div id="main"  class="flex flex-col gap-2 items-center p-2 w-full h-full">
+   <div id="logo-header" class="flex gap-5 justify-center items-center w-fit">
+      <img class="w-auto h-12" src="/assets/images/logo.svg" alt="logo" />
       <h1 class="text-xl font-bold">RPS Elite</h1>
    </div>
    <div id="players-holder" class="flex justify-between items-center w-full">
@@ -18,26 +18,25 @@
       
          {{ template "opponent-panel" .OpponentInfo}}
       
-      <div class="w-1 bg-primary rounded-full h-56 opacity-30">
+      <div class="w-1 h-56 rounded-full opacity-30 bg-primary">
       </div>
       <div id="player-panel" class="flex flex-col w-1/2 h-full">
-         <div id="player-selected-move" class="bg-white rounded-xl w-36 h-36 border-primary border-2 p-2">
+         <div id="player-selected-move" class="p-2 w-36 h-36 bg-white rounded-xl border-2 border-primary">
          </div>
-         <div id="game-option" class="flex w-full px-5 justify-between">
-            <button hx-ws="send:submit" hx-vals='{"move": "rock", "type":"move"}' class=" flex items-center justify-center h-24 w-auto">
+         <div id="game-option" class="flex justify-between px-5 w-full">
+            <button hx-ws="send:submit" hx-vals='{"move": "rock", "type":"move"}' class="flex justify-center items-center w-auto h-24">
             <img class="w-full h-full" src="/assets/images/rock.svg" alt="Rock" />
             </button>
-            <button hx-ws="send:submit" hx-vals='{"move": "paper", "type":"move"}' class="flex items-center justify-center h-24 w-auto">
+            <button hx-ws="send:submit" hx-vals='{"move": "paper", "type":"move"}' class="flex justify-center items-center w-auto h-24">
             <img class="w-full h-full" src="/assets/images/paper.svg" alt="Paper" />
             </button>
-            <button hx-ws="send:submit" hx-vals='{"move": "scissor", "type":"move"}' class="flex items-center justify-center h-24 w-auto">
+            <button hx-ws="send:submit" hx-vals='{"move": "scissor", "type":"move"}' class="flex justify-center items-center w-auto h-24">
             <img class="w-full h-full" src="/assets/images/scissor.svg" alt="Scissor" />
             </button>
          </div>
       </div>
    </div>
-   <div id="history" class="flex flex-col gap-2">
-      <p>move 1 to 2</p>
+   <div id="history" class="flex flex-col gap-2 items-center">
    </div>
 </div>
 {{ end }}

@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"rcp/elite/internal/senders"
 	"rcp/elite/internal/types"
 	"sync"
@@ -176,8 +175,6 @@ func SetPlayerMove(playerName string, move string) error {
 		return errors.New("player not in game")
 	}
 
-	log.Printf("Move allowed %v", doesGameAllowMove(v))
-
 	if !doesGameAllowMove(v) {
 		return errors.New("game currently does not allow player to make move")
 	}
@@ -235,6 +232,8 @@ func mainGameLoop(gameId string) {
 
 		sendEndRound(gameId, winner, tie)
 
+		updatePlayersHistory(gameId, winner)
+
 		time.Sleep(3 * time.Second)
 
 	}
@@ -259,6 +258,18 @@ func mainGameLoop(gameId string) {
 
 }
 
+func updatePlayersHistory(gameId, winner string) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	for _, p := range g.Players {
+		senders.AppendHistory(p.Conn, p.Move, getOpponentMove(g.Players, p), winner)
+	}
+}
+
 func hasReachMaxRound(gameId string) bool {
 	g, ok := getGameFromId(gameId)
 
@@ -278,9 +289,10 @@ func roundStart(gameId string) {
 		return
 	}
 
-	for _, p := range g.Players {
+	for k, p := range g.Players {
 		senders.SendMessage(p.Conn, "Round start! you have 5s", "empty-5s")
 		p.Move = ""
+		g.Players[k] = p
 
 	}
 
