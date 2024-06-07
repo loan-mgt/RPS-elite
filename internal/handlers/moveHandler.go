@@ -26,8 +26,11 @@ func HandleMove(message []byte, playerName string, conn *websocket.Conn) error {
 		return errors.New("invalid move")
 	}
 
-	services.SetPlayerMove(playerName, request.Move)
+	err = services.SetPlayerMove(playerName, request.Move)
 
+	if err != nil {
+		return nil
+	}
 	senders.SendMove(conn, "player", request.Move)
 
 	return nil

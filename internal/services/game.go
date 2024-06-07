@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"rcp/elite/internal/senders"
 	"rcp/elite/internal/types"
 	"sync"
@@ -20,7 +21,6 @@ var (
 	gamePollMutex      = &sync.Mutex{}
 	playerGameMap      = map[string]string{}
 	playerGameMapMutex = &sync.Mutex{}
-	objective          = 3
 )
 
 func isPlayerInGame(playerName string) (bool, string) {
@@ -41,7 +41,7 @@ func isPlayerInPool(playerName string) bool {
 
 func JoinPlayerPoll(player types.Player) error {
 	if is, _ := isPlayerInGame(player.Name); is {
-		return errors.New("Player is in game")
+		return errors.New("player is in game")
 	}
 
 	if isPlayerInPool(player.Name) {
@@ -102,7 +102,8 @@ func createGame(player1, player2 types.Player) {
 			player1.Name: player1,
 			player2.Name: player2,
 		},
-		Round: 1,
+		Round:     1,
+		AllowMove: false,
 	}
 
 	gamePollMutex.Unlock()
@@ -175,9 +176,13 @@ func SetPlayerMove(playerName string, move string) error {
 		return errors.New("player not in game")
 	}
 
-	gamePollMutex.Lock()
-	g, ok := gamePoll[v]
-	gamePollMutex.Unlock()
+	log.Printf("Move allowed %v", doesGameAllowMove(v))
+
+	if !doesGameAllowMove(v) {
+		return errors.New("game currently does not allow player to make move")
+	}
+
+	g, ok := getGameFromId(v)
 
 	if !ok {
 		return errors.New("game not found")
@@ -217,15 +222,24 @@ func mainGameLoop(gameId string) {
 
 	//game start
 	// you have 5s to select a move
-	for still2player(gameId) || noPlayerHasWin(gameId) {
+	for towPlayerInGame(gameId) && !aPlayerHasWin(gameId) && !hasReachMaxRound(gameId) {
+
+		roundStart(gameId)
+		setGameAllowMove(gameId, true)
 		time.Sleep(5 * time.Second)
 
-		_, _ = incrementWinner(gameId)
+		setGameAllowMove(gameId, false)
+		winner, tie := incrementWinner(gameId)
 
 		incrementRound(gameId)
 
-		break
+		sendEndRound(gameId, winner, tie)
+
+		time.Sleep(3 * time.Second)
+
 	}
+
+	displayEndScreen(gameId)
 
 	g, ok := getGameFromId(gameId)
 
@@ -243,6 +257,83 @@ func mainGameLoop(gameId string) {
 	delete(gamePoll, gameId)
 	gamePollMutex.Unlock()
 
+}
+
+func hasReachMaxRound(gameId string) bool {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return true
+	}
+
+	return g.Round >= 30
+}
+
+func roundStart(gameId string) {
+	resetPlayerMove(gameId)
+
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	for _, p := range g.Players {
+		senders.SendMessage(p.Conn, "Round start! you have 5s", "empty-5s")
+		p.Move = ""
+
+	}
+
+	saveGame(gameId, g)
+
+}
+
+func displayEndScreen(gameId string) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	for _, p := range g.Players {
+		senders.SendEndScreen(p.Conn, "party has ended")
+
+	}
+}
+
+func resetPlayerMove(gameId string) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	for _, p := range g.Players {
+		senders.ResetMove(p.Conn, "player")
+		senders.ResetMove(p.Conn, "opponent")
+	}
+
+}
+
+func sendEndRound(gameId, winner string, tie bool) {
+
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	for _, p := range g.Players {
+		senders.SendMove(p.Conn, "opponent", getOpponentMove(g.Players, p))
+		senders.SetScore(p.Conn, "player", p.Score)
+		senders.SetScore(p.Conn, "opponent", getOpponentScore(g.Players, p))
+		if !tie {
+			senders.SendMessage(p.Conn,
+				fmt.Sprintf("Winner is %s! Next round will start in 3s", winner), "empty-3s")
+		} else {
+			senders.SendMessage(p.Conn, "Tie! Next round will start in 3s", "empty-3s")
+		}
+	}
 }
 
 func setupPlayersScreen(gameId string) {
@@ -267,17 +358,37 @@ func getOpponent(players map[string]types.Player, player types.Player) *types.Pl
 	return nil
 }
 
-func still2player(gameId string) bool {
+func getOpponentMove(players map[string]types.Player, player types.Player) string {
+
+	for _, p := range players {
+		if p.Name != player.Name {
+			return p.Move
+		}
+	}
+	return ""
+}
+
+func getOpponentScore(players map[string]types.Player, player types.Player) int {
+
+	for _, p := range players {
+		if p.Name != player.Name {
+			return p.Score
+		}
+	}
+	return 0
+}
+
+func towPlayerInGame(gameId string) bool {
 	g, ok := getGameFromId(gameId)
 
 	if !ok {
 		return false
 	}
 
-	return len(g.Players) != 2
+	return len(g.Players) == 2
 }
 
-func noPlayerHasWin(gameId string) bool {
+func aPlayerHasWin(gameId string) bool {
 	g, ok := getGameFromId(gameId)
 
 	if !ok {
@@ -328,7 +439,6 @@ func incrementWinner(gameId string) (string, bool) {
 			winnerMove = p.Move
 		}
 	}
-
 	if winner != "" {
 		tmpPlayer := g.Players[winner]
 		tmpPlayer.Score += 1
@@ -355,6 +465,33 @@ func isLeftWinning(leftMove, rightMove string) bool {
 		return true
 	}
 
+	if leftMove != "" && rightMove == "" {
+		return true
+	}
+
 	return false
+
+}
+
+func doesGameAllowMove(gameId string) bool {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return false
+	}
+
+	return g.AllowMove
+}
+
+func setGameAllowMove(gameId string, allowMove bool) {
+	g, ok := getGameFromId(gameId)
+
+	if !ok {
+		return
+	}
+
+	g.AllowMove = allowMove
+
+	saveGame(gameId, g)
 
 }
