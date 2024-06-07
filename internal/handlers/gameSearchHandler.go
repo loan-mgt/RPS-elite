@@ -15,12 +15,12 @@ type GameSearchRequest struct {
 	Username string `json:"username"`
 }
 
-func HandleGameSearch(message []byte, conn *websocket.Conn) error {
+func HandleGameSearch(message []byte, conn *websocket.Conn) (string, error) {
 	var request GameSearchRequest
 	err := json.Unmarshal(message, &request)
 	if err != nil {
 		log.Println("Error parsing message:", err)
-		return err
+		return "", err
 	}
 
 	player := &types.Player{
@@ -33,5 +33,5 @@ func HandleGameSearch(message []byte, conn *websocket.Conn) error {
 
 	services.JoinPlayerPoll(*player)
 
-	return senders.SendWaitScreen(player.Conn)
+	return player.Name, senders.SendWaitScreen(player.Conn)
 }

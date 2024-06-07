@@ -35,6 +35,8 @@ func MainController(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleWebSocket(conn *websocket.Conn) {
+	playerName := ""
+loop:
 	for {
 		messageType, message, err := conn.ReadMessage()
 		if err != nil {
@@ -50,7 +52,19 @@ func handleWebSocket(conn *websocket.Conn) {
 			continue
 		}
 
-		err = handleMessage(msg, message, conn)
+		switch msg.Type {
+		case "game-search":
+			playerName, err = handlers.HandleGameSearch(message, conn)
+			if err != nil || playerName == "" {
+				break loop
+			}
+		case "move":
+			err = handlers.HandleMove(message, playerName, conn)
+
+		default:
+			log.Println("Unknown message type:", msg.Type)
+			err = nil
+		}
 		if err != nil {
 			handleWriteError(err, conn)
 			continue
@@ -65,16 +79,4 @@ func handleReadError(err error, conn *websocket.Conn) {
 
 func handleWriteError(err error, conn *websocket.Conn) {
 	log.Printf("Error writing response to client: %v", err)
-}
-
-func handleMessage(msg Message, originalMessage []byte, conn *websocket.Conn) error {
-	switch msg.Type {
-	case "game-search":
-		return handlers.HandleGameSearch(originalMessage, conn)
-	case "move":
-		return handlers.HandleMove(originalMessage, conn)
-	default:
-		log.Println("Unknown message type:", msg.Type)
-		return nil
-	}
 }

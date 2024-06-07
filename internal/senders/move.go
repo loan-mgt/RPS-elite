@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func SendMove(conn *websocket.Conn, to string, move *string) error {
+func SendMove(conn *websocket.Conn, to string, move string) error {
 	moveData := templatedata.Move{
 		TargetId: fmt.Sprintf("%s-selected-move", to),
 		Move:     move,
