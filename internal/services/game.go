@@ -480,11 +480,11 @@ func isLeftWinning(leftMove, rightMove string) (bool, bool) {
 		return true, false
 	}
 
-	if leftMove == "rock" && rightMove == "scissors" {
+	if leftMove == "rock" && rightMove == "scissor" {
 		return true, false
 	}
 
-	if leftMove == "scissors" && rightMove == "paper" {
+	if leftMove == "scissor" && rightMove == "paper" {
 		return true, false
 	}
 
