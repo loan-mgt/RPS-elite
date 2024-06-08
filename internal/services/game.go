@@ -341,9 +341,9 @@ func sendEndRound(gameId, winner string, tie bool) {
 		senders.SetScore(p.Conn, "opponent", getOpponentScore(g.Players, p))
 		if !tie {
 			senders.SendMessage(p.Conn,
-				fmt.Sprintf("Winner is %s! Next round will start in 3s", winner), "empty-3s")
+				fmt.Sprintf("Winner is %s! Next round will start in 3s", winner), "")
 		} else {
-			senders.SendMessage(p.Conn, "Tie! Next round will start in 3s", "empty-3s")
+			senders.SendMessage(p.Conn, "Tie! Next round will start in 3s", "")
 		}
 	}
 }
@@ -443,14 +443,21 @@ func incrementWinner(gameId string) (string, bool) {
 	}
 
 	winner := ""
-	winnerMove := ""
 
-	for k, p := range g.Players {
-		if isLeftWinning(p.Move, winnerMove) {
-			winner = k
-			winnerMove = p.Move
+	for _, p := range g.Players {
+		isLeftWinner, isTie := isLeftWinning(p.Move, getOpponentMove(g.Players, p))
+
+		if !isTie {
+			if isLeftWinner {
+				winner = p.Name
+			} else {
+				winner = getOpponent(g.Players, p).Name
+			}
 		}
+
+		break
 	}
+
 	if winner != "" {
 		tmpPlayer := g.Players[winner]
 		tmpPlayer.Score += 1
@@ -464,24 +471,28 @@ func incrementWinner(gameId string) (string, bool) {
 
 }
 
-func isLeftWinning(leftMove, rightMove string) bool {
+func isLeftWinning(leftMove, rightMove string) (bool, bool) {
+	if leftMove == rightMove {
+		return false, true
+	}
+
 	if leftMove == "paper" && rightMove == "rock" {
-		return true
+		return true, false
 	}
 
 	if leftMove == "rock" && rightMove == "scissors" {
-		return true
+		return true, false
 	}
 
 	if leftMove == "scissors" && rightMove == "paper" {
-		return true
+		return true, false
 	}
 
 	if leftMove != "" && rightMove == "" {
-		return true
+		return true, false
 	}
 
-	return false
+	return false, false
 
 }
 
