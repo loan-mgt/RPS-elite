@@ -12,6 +12,7 @@ func SetupRoutes(r *mux.Router) {
 	r.HandleFunc("/ws", controllers.MainController)
 	r.HandleFunc("/", controllers.IndexController)
 
-	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("static/assets"))))
-	r.PathPrefix("/styles/").Handler(http.StripPrefix("/styles/", http.FileServer(http.Dir("static/styles"))))
+	r.PathPrefix("/assets/").Handler(http.FileServer(http.Dir("static/")))
+	r.PathPrefix("/styles/").Handler(http.FileServer(http.Dir("static/")))
+	r.PathPrefix("/scripts/").Handler(http.FileServer(http.Dir("static/")))
 }

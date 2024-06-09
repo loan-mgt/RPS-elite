@@ -12,9 +12,9 @@
 
 </head>
 
-<script src="https://unpkg.com/htmx.org@1.9.11"></script>
+<script src="/scripts/htmx.min.js"></script>
 
-<body class="bg-primary-light flex h-full w-full items-center flex-col gap-5" hx-ws="connect:/ws">
+<body class="flex flex-col gap-5 items-center w-full h-full bg-primary-light" hx-ws="connect:/ws">
 
 {{ template "home" . }}
 
