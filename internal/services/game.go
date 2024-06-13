@@ -356,7 +356,7 @@ func setupPlayersScreen(gameId string) {
 	}
 
 	for _, p := range g.Players {
-		senders.SetGameHome(p.Conn, &p, getOpponent(g.Players, p), "Game will start in 3s", "empty-3s")
+		senders.SetGameHome(p.Conn, &p, getOpponent(g.Players, p), "Game will start in 3s", "")
 	}
 }
 
