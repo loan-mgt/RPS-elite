@@ -16,7 +16,11 @@
 
 <body class="flex flex-col gap-5 items-center w-full h-full bg-primary-light" hx-ws="connect:/ws">
 
-{{ template "home" . }}
+{{ if eq .Main "home" }}
+    {{ template "home" . }}
+{{ else if eq .Main "logged" }}
+    {{ template "logged" . }}
+{{ end }}
 
 </body>
 

@@ -1,24 +1,16 @@
 {{ define "logged" }}
-<!DOCTYPE html>
-<html lang="en">
+<div id="main" class="flex h-full w-full items-center flex-col gap-5">
+    <div class="h-36 w-auto max-h-1/4">
+        <img class="h-full w-full" src="/assets/images/logo_transparent.svg" alt="logo" />
+    </div>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RCP Game</title>
-    <link rel="icon" href="/assets/images/logo_transparent.svg">
+    <form id="username-form" class="flex flex-col gap-2" hx-ws="send:submit" hx-vals='{"type": "game-search"}'>
+        <label class="font-semibold h-fit" for="username">Username:</label>
+        <input readonly class="py-1 px-2 rounded-lg border-primary border-2" id="username" name="username" type="text"
+            maxlength="15" placeholder="Your best username" />
 
-    <link rel="stylesheet" href="/styles/output.css">
-
-</head>
-
-<script src="https://unpkg.com/htmx.org@1.9.11"></script>
-
-<body class="bg-primary-light flex h-full w-full items-center flex-col gap-5" hx-ws="connect:/ws">
-
-{{ template "home" . }}
-
-</body>
-
-</html>
+        <button class="py-1 px-2 bg-primary rounded-lg font-semibold mt-2 hover-bg-secondary transition-all"
+            type="submit">Play</button>
+    </form>
+</div>
 {{ end }}
